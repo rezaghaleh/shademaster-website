@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   Star,
   Instagram,
+  Menu,
+  X,
 } from "lucide-react";
 
 const navItems = [
@@ -95,17 +97,22 @@ function ShadePreview({ type }: { type: string }) {
 }
 
 export default function ShadeMasterLanding() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const anchor = target.closest('a[href^="#"]') as HTMLAnchorElement | null;
       if (!anchor) return;
+
       const id = anchor.getAttribute("href");
       if (id && id.startsWith("#")) {
         e.preventDefault();
         document.querySelector(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setMobileMenuOpen(false);
       }
     };
+
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, []);
@@ -178,14 +185,46 @@ export default function ShadeMasterLanding() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">
             <a href="#contact">
-              <Button size="sm" className="rounded-2xl bg-sky-500 hover:bg-sky-600 text-white">
+              <Button size="sm" className="rounded-2xl bg-sky-500 text-white hover:bg-sky-600">
                 Free Quote
               </Button>
             </a>
           </div>
+
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-xl border border-neutral-200 p-2 text-neutral-700 md:hidden"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="border-t border-neutral-200 bg-white md:hidden">
+            <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4">
+              {navItems.map((n) => (
+                <a
+                  key={n.href}
+                  href={n.href}
+                  className="rounded-xl px-3 py-3 text-sm text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-900"
+                >
+                  {n.label}
+                </a>
+              ))}
+
+              <a href="#contact" className="mt-2">
+                <Button className="w-full rounded-2xl bg-sky-500 text-white hover:bg-sky-600">
+                  Free Quote
+                </Button>
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       <section className="w-full border-b border-neutral-200 bg-gradient-to-b from-sky-50 to-white">
@@ -356,35 +395,33 @@ export default function ShadeMasterLanding() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200">
+              <Image
+                src="/projects/project1.JPEG"
+                alt="Roller shades installation Vancouver"
+                fill
+                className="object-cover"
+              />
+            </div>
 
-<div className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200">
-  <Image
-    src="/projects/project1.JPEG"
-    alt="Roller shades installation Vancouver"
-    fill
-    className="object-cover"
-  />
-</div>
+            <div className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200">
+              <Image
+                src="/projects/project2.JPEG"
+                alt="Zebra shades condo install"
+                fill
+                className="object-cover"
+              />
+            </div>
 
-<div className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200">
-  <Image
-    src="/projects/project2.JPEG"
-    alt="Zebra shades condo install"
-    fill
-    className="object-cover"
-  />
-</div>
-
-<div className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200">
-  <Image
-    src="/projects/project3.jpg"
-    alt="Faux wood blinds installation"
-    fill
-    className="object-cover"
-  />
-</div>
-
-</div>
+            <div className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200">
+              <Image
+                src="/projects/project3.jpg"
+                alt="Faux wood blinds installation"
+                fill
+                className="object-cover"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
