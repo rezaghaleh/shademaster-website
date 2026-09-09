@@ -2,46 +2,807 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================================================
+   ShadeMaster Blinds LTD. — design tokens.
+
+   Every colour here already existed in this project:
+     · #061D3F  the logo ink, sampled from public/shademaster-logo.png and the
+                brand colour recorded in README.md (HSL 216 83% 14%). It is now
+                the site's ground — a room with the shades drawn.
+     · #F8F8F8  the logo's own ground. On the navy it reads as light.
+     · #0EA5E9  sky-500 — the accent used on every CTA and icon in the old page.
+     · #0284C7  sky-600 — the old hover/icon colour.
+     · #2563EB  blue-600 — the previous `--primary` value (hsl 221 83% 53%).
+     · #E0F2FE  sky-100 — the old badge fill.
+   Surfaces are tints of the brand navy (same hue) or low-alpha light, so no new
+   hues enter the palette.
+   =========================================================================== */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    /* shadcn tokens, re-grounded on the brand navy */
+    --background: 216 83% 14%;
+    --foreground: 0 0% 97%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 216 60% 18%;
+    --card-foreground: 0 0% 97%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 216 60% 18%;
+    --popover-foreground: 0 0% 97%;
 
-    /* Brand color */
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand accent — sky-500, the colour the site already used everywhere */
+    --primary: 199 89% 48%;
+    --primary-foreground: 216 83% 12%;
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 216 50% 22%;
+    --secondary-foreground: 0 0% 97%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 0 0% 98%;
+    --muted: 216 45% 24%;
+    --muted-foreground: 210 22% 72%;
 
-    --accent: 221 83% 53%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 216 83% 12%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 97%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 216 40% 26%;
+    --input: 216 40% 26%;
+    --ring: 199 89% 48%;
 
     --radius: 0.75rem;
+
+    /* ShadeMaster scale */
+    --sm-ink: 216 83% 14%;         /* #061D3F */
+    --sm-ink-deep: 216 84% 10%;    /* shaded navy — vignettes, menu ground */
+    --sm-ink-raised: 216 55% 19%;  /* lifted navy — cards */
+    --sm-bone: 0 0% 97%;           /* #F8F8F8 */
+    --sm-mute: 210 22% 72%;
+    --sm-faint: 213 16% 55%;
+    --sm-accent: 199 89% 48%;      /* sky-500  #0EA5E9 */
+    --sm-accent-deep: 201 96% 39%; /* sky-600  #0284C7 */
+    --sm-blue: 221 83% 53%;        /* blue-600 #2563EB */
+    --sm-sky-soft: 204 94% 94%;    /* sky-100  #E0F2FE */
+
+    --sm-font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Helvetica, Arial, sans-serif;
+    --sm-font-display: 'Avenir Next Condensed', 'Arial Narrow', 'Helvetica Neue',
+      Arial, sans-serif;
+    --sm-font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas,
+      monospace;
+
+    --sm-line: 210 40% 98% / 0.10;
+    --sm-line-strong: 210 40% 98% / 0.2;
+  }
+
+  html {
+    /* Single source of scroll offset. `scroll-margin-top` is deliberately NOT
+       set on sections — the two stack, and the doubled offset parks anchored
+       sections below the scroll-spy's threshold. See useScrollSpy. */
+    scroll-padding-top: 5.5rem;
+    background-color: hsl(var(--sm-ink));
+  }
+
+  body {
+    background-color: hsl(var(--sm-ink));
+    color: hsl(var(--sm-bone));
+    overflow-x: hidden;
   }
 
   *, ::before, ::after {
     border-color: hsl(var(--border));
   }
 
-  body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+  img, svg {
+    display: block;
+    max-width: 100%;
   }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--sm-accent));
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  #main:focus {
+    outline: none;
+  }
+
+  ::selection {
+    background: hsl(var(--sm-accent));
+    color: hsl(var(--sm-ink));
+  }
+}
+
+/* ===========================================================================
+   Shared building blocks.
+
+   These live inside `@layer components` on purpose: unlayered CSS beats every
+   Tailwind utility, so `.btn` defined outside a layer would win over `hidden`,
+   `px-4` and friends wherever they are combined.
+   =========================================================================== */
+
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 5vw, 2.6rem);
+  }
+
+  /* Huge condensed display headline — the page's voice. */
+  .display {
+    font-family: var(--sm-font-display);
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.06em;
+    text-transform: uppercase;
+    font-stretch: condensed;
+    text-wrap: balance;
+  }
+
+  /* Small monospace label — the technical counterpoint to the display type. */
+  .hud {
+    font-family: var(--sm-font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -3.5rem;
+    z-index: 100;
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    background: hsl(var(--sm-accent));
+    color: hsl(var(--sm-ink));
+    font-weight: 600;
+    transition: top 0.15s ease;
+  }
+
+  .skip-link:focus {
+    top: 1rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.85rem 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    transition:
+      transform 0.14s ease,
+      background-color 0.14s ease,
+      border-color 0.14s ease,
+      box-shadow 0.14s ease;
+  }
+
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-primary {
+    background: hsl(var(--sm-accent));
+    color: hsl(var(--sm-ink));
+    box-shadow:
+      0 0 0 1px hsl(var(--sm-accent) / 0.45),
+      0 14px 42px -14px hsl(var(--sm-accent) / 0.6);
+  }
+
+  .btn-primary:hover {
+    background: hsl(var(--sm-sky-soft));
+    box-shadow:
+      0 0 0 1px hsl(var(--sm-accent) / 0.55),
+      0 18px 50px -14px hsl(var(--sm-accent) / 0.55);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: hsl(var(--sm-bone));
+    border-color: hsl(var(--sm-line-strong));
+  }
+
+  .btn-ghost:hover {
+    background: hsl(var(--sm-accent) / 0.1);
+    border-color: hsl(var(--sm-accent) / 0.45);
+  }
+}
+
+/* ===========================================================================
+   Motion.
+
+   One metaphor runs the whole page: a shade being drawn. Everything below is
+   some part of that — a rail travelling, fabric rolling, light arriving on a
+   floor. These rules are unlayered on purpose: Tailwind purges `@layer
+   components` by class name and would strip the keyframes. Their selectors are
+   namespaced so they never contend with a utility on the same element.
+   =========================================================================== */
+
+/* --- Scroll reveal. The hiding rule only applies once JS adds
+       `.reveals-ready`, so content stays readable with scripts disabled. --- */
+.reveals-ready .reveal {
+  opacity: 0;
+  translate: 0 22px;
+  clip-path: inset(0 0 14% 0);
+  transition:
+    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    translate 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    clip-path 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveals-ready .reveal.is-visible {
+  opacity: 1;
+  translate: none;
+  clip-path: inset(0 0 0 0);
+}
+
+/* ===========================================================================
+   Brand intro — slats lift in sequence and the mark is revealed beneath them,
+   the way light arrives when a blind opens. Under 800ms, once per session.
+   =========================================================================== */
+
+.brand-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: hsl(var(--sm-ink));
+  transition: opacity 200ms ease;
+  /* Ships in the server HTML so a fresh visit is covered on first paint. JS
+     unmounts it at 760ms; this clears it even if scripts never run, so the page
+     can never be trapped behind the overlay. */
+  animation: bi-clear 1ms linear 900ms forwards;
+}
+
+@keyframes bi-clear {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.brand-intro.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brand-intro__slat {
+  transform-box: fill-box;
+  transform-origin: center top;
+  transform: scaleY(1);
+  animation: bi-lift 340ms cubic-bezier(0.33, 0, 0.15, 1) forwards;
+}
+
+.brand-intro__slat.s1 { animation-delay: 40ms; }
+.brand-intro__slat.s2 { animation-delay: 110ms; }
+.brand-intro__slat.s3 { animation-delay: 180ms; }
+.brand-intro__slat.s4 { animation-delay: 250ms; }
+
+@keyframes bi-lift {
+  to { transform: scaleY(0.06); }
+}
+
+.brand-intro__mark {
+  opacity: 0;
+  transform: scale(0.86);
+  filter: blur(5px);
+  animation: bi-mark 300ms cubic-bezier(0.22, 0.7, 0.3, 1) 210ms forwards;
+}
+
+@keyframes bi-mark {
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+.brand-intro__word {
+  opacity: 0;
+  translate: 0 10px;
+  clip-path: inset(0 0 100% 0);
+  animation: bi-word 320ms cubic-bezier(0.22, 1, 0.36, 1) 330ms forwards;
+}
+
+@keyframes bi-word {
+  to {
+    opacity: 1;
+    translate: none;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ===========================================================================
+   Hero window — the product doing its job.
+
+   A staged ~6s sequence: the shade rolls up, the view arrives, light lands on
+   the floor, then the rail settles to a set position. That last move is the
+   point — light control is the thing being sold. Then it drops into ambient.
+
+   Fabric scales from the top (scaleY 1 -> 0.18 -> 0.42 of a 320-unit drop) and
+   the rail translates to match: -320 x (1 - scaleY). Both keyframe sets share
+   percentages so the rail never separates from the fabric edge.
+   =========================================================================== */
+
+.hero-window__fabric,
+.hero-window__rail,
+.hero-window__beam,
+.hero-window__view,
+.hero-window__click,
+.hero-window__mote,
+.hero-window__glow,
+.hero-window__cord {
+  animation-play-state: paused;
+}
+
+.hero-window__fabric {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: hw-fabric 6000ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes hw-fabric {
+  0%, 8%    { transform: scaleY(1); }
+  40%, 60%  { transform: scaleY(0.18); }
+  82%, 100% { transform: scaleY(0.42); }
+}
+
+.hero-window__rail {
+  animation: hw-rail 6000ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes hw-rail {
+  0%, 8%    { transform: translateY(0); }
+  40%, 60%  { transform: translateY(-262.4px); }
+  82%, 100% { transform: translateY(-185.6px); }
+}
+
+.hero-window__view {
+  opacity: 0;
+  animation: hw-view 6000ms ease forwards;
+}
+
+@keyframes hw-view {
+  0%, 18%   { opacity: 0; }
+  46%, 100% { opacity: 1; }
+}
+
+/* Light on the floor, widening as the shade lifts, narrowing as it settles. */
+.hero-window__beam {
+  transform-box: fill-box;
+  transform-origin: center top;
+  opacity: 0;
+  animation: hw-beam 6000ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes hw-beam {
+  0%, 8%    { opacity: 0; transform: scaleX(0.45); }
+  40%, 60%  { opacity: 1; transform: scaleX(1); }
+  82%, 100% { opacity: 0.74; transform: scaleX(0.8); }
+}
+
+.hero-window__glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation:
+    hw-glow-in 1400ms ease 2200ms forwards,
+    hw-breathe 9s ease-in-out 6000ms infinite;
+}
+
+@keyframes hw-glow-in {
+  to { opacity: 0.55; }
+}
+
+@keyframes hw-breathe {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.68; }
+}
+
+/* The control cue: a ring at the cassette, just before the shade moves. */
+.hero-window__click {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: hw-click 900ms ease-out 320ms 2;
+}
+
+@keyframes hw-click {
+  0%        { opacity: 0.6; transform: scale(0.5); }
+  70%, 100% { opacity: 0; transform: scale(2.6); }
+}
+
+.hero-window__cord {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: hw-sway 7s ease-in-out 6000ms infinite alternate;
+}
+
+@keyframes hw-sway {
+  from { transform: rotate(-0.9deg); }
+  to   { transform: rotate(0.9deg); }
+}
+
+/* Dust drifting through the beam once it has landed. */
+.hero-window__mote {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation:
+    hw-mote-in 900ms ease 4200ms forwards,
+    hw-drift var(--dur, 16s) ease-in-out var(--phase, 0s) infinite alternate;
+}
+
+@keyframes hw-mote-in {
+  to { opacity: var(--peak, 0.5); }
+}
+
+@keyframes hw-drift {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(var(--dx, 8px), var(--dy, -14px)); }
+}
+
+.hero-window.is-live .hero-window__fabric,
+.hero-window.is-live .hero-window__rail,
+.hero-window.is-live .hero-window__beam,
+.hero-window.is-live .hero-window__view,
+.hero-window.is-live .hero-window__click,
+.hero-window.is-live .hero-window__mote,
+.hero-window.is-live .hero-window__glow,
+.hero-window.is-live .hero-window__cord {
+  animation-play-state: running;
+}
+
+/* Reduced motion / no JS: the window resolves to the end of the sequence —
+   shade set, view visible, light on the floor. Nothing is hidden. */
+.hero-window.is-static .hero-window__fabric {
+  animation: none;
+  transform: scaleY(0.42);
+}
+.hero-window.is-static .hero-window__rail {
+  animation: none;
+  transform: translateY(-185.6px);
+}
+.hero-window.is-static .hero-window__view {
+  animation: none;
+  opacity: 1;
+}
+.hero-window.is-static .hero-window__beam {
+  animation: none;
+  opacity: 0.74;
+  transform: scaleX(0.8);
+}
+.hero-window.is-static .hero-window__glow {
+  animation: none;
+  opacity: 0.55;
+}
+.hero-window.is-static .hero-window__click,
+.hero-window.is-static .hero-window__mote,
+.hero-window.is-static .hero-window__cord {
+  animation: none;
+}
+.hero-window.is-static .hero-window__mote {
+  opacity: var(--peak, 0.5);
+}
+
+/* ===========================================================================
+   Shade cord — the page's progress indicator.
+
+   A cord down the left edge with the bottom rail riding it. Scroll position is
+   how far the shade has been drawn. The cord hangs with a slight sway, so the
+   marker is placed with getPointAtLength rather than progress x height — arc
+   length and vertical distance are not the same thing on a curve.
+   =========================================================================== */
+
+.shade-cord__base {
+  stroke: hsl(var(--sm-line-strong));
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.shade-cord__drawn {
+  stroke: hsl(var(--sm-accent));
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.8;
+  filter: drop-shadow(0 0 4px hsl(var(--sm-accent) / 0.5));
+}
+
+.shade-cord__pulse {
+  animation: sc-pulse 2.8s ease-out infinite;
+}
+
+@keyframes sc-pulse {
+  0%        { opacity: 0.55; scale: 1; }
+  70%, 100% { opacity: 0; scale: 3.2; }
+}
+
+/* ===========================================================================
+   Product demos — each card shows the product actually working.
+   =========================================================================== */
+
+/* Roller: fabric drops from the top, the light behind it dims. */
+.demo-roller__fabric {
+  transform-box: fill-box;
+  transform-origin: center top;
+  transition: transform 260ms cubic-bezier(0.32, 0, 0.24, 1);
+}
+
+.demo-roller__rail {
+  transition: transform 260ms cubic-bezier(0.32, 0, 0.24, 1);
+}
+
+.demo-roller__light {
+  transition: opacity 260ms ease;
+}
+
+.demo-roller.is-dragging .demo-roller__fabric,
+.demo-roller.is-dragging .demo-roller__rail {
+  transition-duration: 0ms;
+}
+
+/* Zebra: two banded layers slide against each other, sheer -> closed. */
+.demo-zebra__bands {
+  transition: transform 900ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.is-active .demo-zebra__bands {
+  transform: translateY(14px);
+}
+
+.demo-zebra__glow {
+  transition: opacity 900ms ease;
+  opacity: 0.85;
+}
+
+.is-active .demo-zebra__glow {
+  opacity: 0.12;
+}
+
+/* Faux wood: slats tilt through their range. */
+.demo-wood__slat {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 700ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 55ms);
+}
+
+.is-active .demo-wood__slat {
+  transform: scaleY(0.22);
+}
+
+/* Motor: the rail glides on its own once the control is pressed. */
+.demo-motor__fabric {
+  transform-box: fill-box;
+  transform-origin: center top;
+  transition: transform 1400ms cubic-bezier(0.45, 0, 0.15, 1);
+}
+
+.demo-motor__rail {
+  transition: transform 1400ms cubic-bezier(0.45, 0, 0.15, 1);
+}
+
+.demo-motor__signal {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.demo-motor.is-sending .demo-motor__signal {
+  animation: dm-signal 900ms ease-out;
+}
+
+@keyframes dm-signal {
+  0%        { opacity: 0.7; transform: scale(0.4); }
+  70%, 100% { opacity: 0; transform: scale(2.4); }
+}
+
+/* ===========================================================================
+   Process window — one window, morphing through the stages of a real job.
+   =========================================================================== */
+
+.pw-part {
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pw-part[data-on='false'] { opacity: 0; }
+.pw-part[data-on='true']  { opacity: 1; }
+
+.pw-measure__line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 760ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pw-part[data-on='true'] .pw-measure__line {
+  stroke-dashoffset: 0;
+}
+
+.pw-shade__fabric {
+  transform-box: fill-box;
+  transform-origin: center top;
+  transition: transform 900ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pw-shade__rail {
+  transition: transform 900ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pw-motor__wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.pw-part[data-on='true'] .pw-motor__wave {
+  animation: pw-wave 2.6s ease-out infinite;
+}
+
+@keyframes pw-wave {
+  0%        { opacity: 0.5; transform: scale(0.5); }
+  70%, 100% { opacity: 0; transform: scale(2.5); }
+}
+
+/* ===========================================================================
+   Arrival — the shade lands at its set position and light settles.
+   =========================================================================== */
+
+.arrival__fabric {
+  transform-box: fill-box;
+  transform-origin: center top;
+  transform: scaleY(0.1);
+  transition: transform 1500ms cubic-bezier(0.33, 0, 0.15, 1);
+}
+
+.arrival__rail {
+  transform: translateY(-162px);
+  transition: transform 1500ms cubic-bezier(0.33, 0, 0.15, 1);
+}
+
+.is-arrived .arrival__fabric { transform: scaleY(0.55); }
+.is-arrived .arrival__rail   { transform: translateY(-81px); }
+
+.arrival__light {
+  opacity: 0;
+  transition: opacity 900ms ease 700ms;
+}
+
+.is-arrived .arrival__light { opacity: 1; }
+
+.arrival__pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.is-arrived .arrival__pulse {
+  animation: arr-pulse 3s ease-out 1500ms infinite;
+}
+
+@keyframes arr-pulse {
+  0%        { opacity: 0.45; transform: scale(0.6); }
+  70%, 100% { opacity: 0; transform: scale(2.6); }
+}
+
+/* ===========================================================================
+   Client-side page transition — a shade wipe, never a reload.
+   =========================================================================== */
+
+.page-view {
+  transition:
+    opacity 220ms ease,
+    translate 220ms ease;
+}
+
+.page-view.is-leaving {
+  opacity: 0;
+  translate: 0 -8px;
+}
+
+.page-view.is-entering {
+  opacity: 0;
+  translate: 0 12px;
+}
+
+.shade-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background: hsl(var(--sm-ink-deep));
+  clip-path: inset(0 0 100% 0);
+}
+
+.shade-wipe.is-active {
+  animation: sw-pass 560ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+@keyframes sw-pass {
+  0%   { clip-path: inset(0 0 100% 0); }
+  42%  { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(100% 0 0 0); }
+}
+
+/* ===========================================================================
+   Reduced motion — every animated piece resolves to its final state. Nothing
+   is left blank, nothing is left hidden.
+   =========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  .reveals-ready .reveal {
+    opacity: 1;
+    translate: none;
+    clip-path: none;
+    transition: none;
+  }
+
+  /* the overlay gets out of the way sooner and does not animate */
+  .brand-intro { animation-delay: 250ms; }
+
+  .brand-intro__slat,
+  .brand-intro__mark,
+  .brand-intro__word {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    translate: none;
+    clip-path: none;
+    filter: none;
+  }
+  .brand-intro__slat { transform: scaleY(0.06); }
+
+  .shade-cord__pulse { animation: none; }
+
+  .demo-roller__fabric,
+  .demo-roller__rail,
+  .demo-roller__light,
+  .demo-zebra__bands,
+  .demo-zebra__glow,
+  .demo-wood__slat,
+  .demo-motor__fabric,
+  .demo-motor__rail,
+  .pw-part,
+  .pw-measure__line,
+  .pw-shade__fabric,
+  .pw-shade__rail,
+  .arrival__fabric,
+  .arrival__rail,
+  .arrival__light,
+  .page-view {
+    transition: none;
+  }
+
+  .pw-measure__line { stroke-dashoffset: 0; }
+
+  .arrival__fabric { transform: scaleY(0.55); }
+  .arrival__rail   { transform: translateY(-81px); }
+  .arrival__light  { opacity: 1; }
+
+  .demo-motor__signal,
+  .pw-motor__wave,
+  .arrival__pulse {
+    animation: none;
+  }
+
+  .shade-wipe.is-active { animation: none; }
+
+  .btn:hover,
+  .btn:active { transform: none; }
 }

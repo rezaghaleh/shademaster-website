@@ -43,6 +43,32 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
+        /* ShadeMaster scale — see the token block in globals.css for where each
+           of these colours already existed in the project. */
+        ink: {
+          DEFAULT: "hsl(var(--sm-ink))",
+          deep: "hsl(var(--sm-ink-deep))",
+          raised: "hsl(var(--sm-ink-raised))",
+        },
+        bone: "hsl(var(--sm-bone))",
+        mute: "hsl(var(--sm-mute))",
+        faint: "hsl(var(--sm-faint))",
+        sky: {
+          brand: "hsl(var(--sm-accent))",
+          deep: "hsl(var(--sm-accent-deep))",
+          soft: "hsl(var(--sm-sky-soft))",
+        },
+        brandblue: "hsl(var(--sm-blue))",
+        line: {
+          DEFAULT: "hsl(var(--sm-line))",
+          strong: "hsl(var(--sm-line-strong))",
+        },
+      },
+      fontFamily: {
+        body: "var(--sm-font-body)",
+        display: "var(--sm-font-display)",
+        mono: "var(--sm-font-mono)",
       },
       borderRadius: {
         lg: "var(--radius)",
