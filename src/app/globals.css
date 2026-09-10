@@ -150,6 +150,22 @@
     text-transform: uppercase;
   }
 
+  /* Number fields where the browser's spin buttons only crowd the value.
+     They sit inside the box and steal ~16px from the right edge, which is
+     part of what clipped three-digit measurements. Hiding them is cosmetic
+     only: the field is still type="number", so the up/down arrow keys, the
+     numeric keypad on mobile and min/step validation all behave as before. */
+  .no-spin {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .no-spin::-webkit-outer-spin-button,
+  .no-spin::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   .skip-link {
     position: absolute;
     left: 1rem;

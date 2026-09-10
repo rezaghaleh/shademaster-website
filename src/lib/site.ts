@@ -29,15 +29,37 @@ export const CONTACT = {
   city: "Vancouver, BC",
 } as const
 
-export const NAV = [
+/**
+ * A nav entry is either a section of the home page or a route of its own.
+ *
+ * This is a written-out type rather than `as const` on purpose. With no
+ * page-kind entry currently listed, `as const` would narrow every item's kind
+ * to "section" and the header's page-link branch would stop compiling — the
+ * machinery for a routed nav item would have to be deleted and rewritten to put
+ * one back. Typing the array keeps that branch alive and correct.
+ */
+export type NavItem =
+  | { id: string; label: string; kind: "section" }
+  | { id: string; label: string; kind: "page"; href: string }
+
+/**
+ * The public navigation, used by both the desktop header and the full-screen
+ * mobile menu.
+ *
+ * /estimate is deliberately not listed. The pre-quote calculator still exists
+ * and still works when the URL is opened directly — it is simply not advertised
+ * to visitors anywhere on the public site. To put it back, add:
+ *
+ *   { id: "estimate", label: "Estimate", kind: "page", href: "/estimate" },
+ */
+export const NAV: readonly NavItem[] = [
   { id: "home", label: "Home", kind: "section" },
   { id: "products", label: "Products", kind: "section" },
   { id: "services", label: "Services", kind: "section" },
   { id: "gallery", label: "Gallery", kind: "section" },
   { id: "about", label: "About", kind: "section" },
   { id: "contact", label: "Contact", kind: "section" },
-  { id: "estimate", label: "Estimate", kind: "page", href: "/estimate" },
-] as const
+]
 
 /** Ids the scroll-spy watches, in document order. */
 export const SPY_IDS = [

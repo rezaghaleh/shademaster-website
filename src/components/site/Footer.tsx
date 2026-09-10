@@ -1,5 +1,4 @@
 import Image from "next/image"
-import Link from "next/link"
 import { ASSETS, CONTACT, SITE } from "@/lib/site"
 
 /**
@@ -78,14 +77,6 @@ export function Footer() {
                 <a className="hover:text-sky-brand transition-colors" href="/#gallery">
                   Gallery
                 </a>
-              </li>
-              <li>
-                <Link
-                  className="hover:text-sky-brand transition-colors"
-                  href="/estimate"
-                >
-                  Estimate
-                </Link>
               </li>
             </ul>
           </div>

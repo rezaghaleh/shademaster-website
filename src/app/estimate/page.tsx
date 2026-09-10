@@ -2,44 +2,22 @@
 
 import React, { useMemo, useState } from "react"
 import Link from "next/link"
+import { InchInput } from "@/components/InchInput"
+import { formatInches } from "@/lib/fractions"
+import {
+  MAX_ITEMS,
+  MOTOR_SURCHARGE,
+  calculateLinePrice,
+  type PricingInput,
+  type ProductType,
+} from "@/lib/pricing"
 
-type ProductType = "roller" | "zebra"
-
-type LineItem = {
-  id: number
-  width: number // inches
-  height: number // inches
-  productType: ProductType
-  motorized: boolean
-  quantity: number
-}
-
-const MAX_ITEMS = 30
-const MOTOR_SURCHARGE = 215 // your motorized price per shade
-
-// 👉 YOUR REAL FORMULA
-function calculateLinePrice(item: LineItem): number {
-  // 1) inches -> feet, round UP
-  const widthFt = Math.ceil(item.width / 12)
-  const heightFt = Math.ceil(item.height / 12)
-
-  // 2) square footage
-  const sqft = widthFt * heightFt
-
-  // 3) rate: roller vs zebra
-  const rate = item.productType === "roller" ? 4.5 : 4.75
-
-  // 4) base price per shade
-  let pricePerShade = sqft * rate
-
-  // 5) motorized surcharge
-  if (item.motorized) {
-    pricePerShade += MOTOR_SURCHARGE
-  }
-
-  // 6) quantity
-  return pricePerShade * item.quantity
-}
+/**
+ * The pricing formula now lives in src/lib/pricing.ts so that the admin
+ * backend can be held to exactly the same math — see that file, and
+ * `npm run pricing:verify`. Nothing about the numbers on this page changed.
+ */
+type LineItem = PricingInput & { id: number }
 
 const currency = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -68,8 +46,8 @@ function TrashIcon() {
 
 export default function EstimatePage() {
   const [items, setItems] = useState<LineItem[]>([])
-  const [width, setWidth] = useState<string>("")
-  const [height, setHeight] = useState<string>("")
+  const [width, setWidth] = useState<number | "">("")
+  const [height, setHeight] = useState<number | "">("")
   const [productType, setProductType] = useState<ProductType>("roller")
   const [motorized, setMotorized] = useState<boolean>(false)
   const [quantity, setQuantity] = useState<string>("1")
@@ -83,8 +61,11 @@ export default function EstimatePage() {
   const handleAddItem = () => {
     if (items.length >= MAX_ITEMS) return
 
-    const w = Number(width)
-    const h = Number(height)
+    // width/height already hold the combined decimal from InchInput
+    // ("30" + "1/2" -> 30.5), so the value handed to the pricing formula is
+    // exactly the kind of number it has always received.
+    const w = typeof width === "number" ? width : 0
+    const h = typeof height === "number" ? height : 0
     const q = Number(quantity)
 
     if (!w || !h || !q || w <= 0 || h <= 0 || q <= 0) {
@@ -141,38 +122,20 @@ export default function EstimatePage() {
             01 — Add a window / shade
           </h2>
 
-          <div className="mt-6 grid gap-5 md:grid-cols-4">
-            <div className="space-y-2">
-              <label className="hud text-faint block" htmlFor="est-width">
-                Width (inches)
-              </label>
-              <input
-                id="est-width"
-                className={inputClass}
-                type="number"
-                min="0"
-                step="0.1"
-                value={width}
-                onChange={(e) => setWidth(e.target.value)}
-                placeholder="e.g. 78"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="hud text-faint block" htmlFor="est-height">
-                Height (inches)
-              </label>
-              <input
-                id="est-height"
-                className={inputClass}
-                type="number"
-                min="0"
-                step="0.1"
-                value={height}
-                onChange={(e) => setHeight(e.target.value)}
-                placeholder="e.g. 57"
-              />
-            </div>
-            <div className="space-y-2">
+          <div className="mt-6 grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-[minmax(13.5rem,1.25fr)_minmax(13.5rem,1.25fr)_6.5rem_minmax(12rem,1fr)]">
+            <InchInput
+              idPrefix="est-width"
+              label="Width (inches)"
+              value={width}
+              onChange={setWidth}
+            />
+            <InchInput
+              idPrefix="est-height"
+              label="Height (inches)"
+              value={height}
+              onChange={setHeight}
+            />
+            <div className="space-y-2.5">
               <label className="hud text-faint block" htmlFor="est-qty">
                 Quantity
               </label>
@@ -187,8 +150,8 @@ export default function EstimatePage() {
                 placeholder="1"
               />
             </div>
-            <fieldset className="space-y-2">
-              <legend className="hud text-faint mb-2">Product type</legend>
+            <fieldset className="space-y-2.5">
+              <legend className="hud text-faint">Product type</legend>
               <div className="grid grid-cols-2 gap-2">
                 {(["roller", "zebra"] as const).map((type) => (
                   <button
@@ -196,7 +159,7 @@ export default function EstimatePage() {
                     type="button"
                     onClick={() => setProductType(type)}
                     aria-pressed={productType === type}
-                    className={`hud rounded-lg border px-3 py-2.5 capitalize transition-colors ${
+                    className={`hud h-11 rounded-lg border px-3 capitalize transition-colors ${
                       productType === type
                         ? "border-sky-brand bg-sky-brand/15 text-bone"
                         : "border-line-strong text-mute hover:text-bone"
@@ -292,7 +255,7 @@ export default function EstimatePage() {
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <span className="text-bone font-medium tabular-nums">
-                        {item.width}&quot; × {item.height}&quot;
+                        {formatInches(item.width)}&quot; × {formatInches(item.height)}&quot;
                       </span>
                     </div>
                     <span className="text-mute capitalize max-md:hidden">

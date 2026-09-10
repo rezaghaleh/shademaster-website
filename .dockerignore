@@ -1,0 +1,27 @@
+# Keep secrets and bulk out of the build context.
+#
+# .env.local holds the contact form's mailbox credentials. Anything copied into
+# the image can be read back out of a layer, so it never goes in.
+.env
+.env.local
+.env.*.local
+
+# Rebuilt inside the image; copying a host build in would mask stale output.
+.next/
+node_modules/
+out/
+
+# The admin backend lives beside this project and is deployed separately.
+shademaster-admin-backend/
+
+# Version control and IDE noise
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Docs, scratch and test artefacts
+*.md
+!README.md
+*.log
+coverage/

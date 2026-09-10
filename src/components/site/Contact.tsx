@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { AREAS, CONTACT } from "@/lib/site"
 
 const stroke = {
@@ -145,17 +144,6 @@ export function Contact() {
               For now, please call, email, or message us on Instagram for project
               inquiries.
             </p>
-          </div>
-
-          <div className="border-line bg-ink-raised/50 rounded-2xl border p-6">
-            <p className="hud text-faint">Estimate</p>
-            <p className="text-mute mt-4 text-sm leading-[1.65]">
-              Enter your window sizes to get a rough idea of your project cost.
-              Final pricing will be confirmed after an in-home visit.
-            </p>
-            <Link className="btn btn-ghost mt-5 w-full" href="/estimate">
-              Pre-Quote Price Estimate
-            </Link>
           </div>
         </div>
       </div>

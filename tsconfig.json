@@ -15,6 +15,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // scripts/pricing-vectors.ts is run directly by Node's type stripping
+    // (`node --experimental-strip-types`), which requires the explicit .ts
+    // extension on relative imports. Safe with noEmit.
+    "allowImportingTsExtensions": true,
     "jsx": "preserve",
     "incremental": true,
     "baseUrl": ".",

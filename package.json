@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pricing:gen": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/pricing-vectors.ts --write",
+    "pricing:verify": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/pricing-vectors.ts --check",
+    "fractions:verify": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/fractions-check.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",
@@ -31,5 +34,8 @@
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.9",
     "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.9.0 <23"
   }
 }

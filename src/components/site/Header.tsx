@@ -12,13 +12,12 @@ const NO_SPY: readonly string[] = []
 
 /** Items open in sequence and close in reverse — the template's cadence. */
 const MENU_DELAYS = [
-  { open: "delay-[180ms]", close: "delay-[300ms]" },
-  { open: "delay-[240ms]", close: "delay-[250ms]" },
-  { open: "delay-[300ms]", close: "delay-[200ms]" },
-  { open: "delay-[360ms]", close: "delay-[150ms]" },
-  { open: "delay-[420ms]", close: "delay-[100ms]" },
-  { open: "delay-[480ms]", close: "delay-[50ms]" },
-  { open: "delay-[540ms]", close: "delay-0" },
+  { open: "delay-[180ms]", close: "delay-[250ms]" },
+  { open: "delay-[240ms]", close: "delay-[200ms]" },
+  { open: "delay-[300ms]", close: "delay-[150ms]" },
+  { open: "delay-[360ms]", close: "delay-[100ms]" },
+  { open: "delay-[420ms]", close: "delay-[50ms]" },
+  { open: "delay-[480ms]", close: "delay-0" },
 ]
 
 export function Header() {
@@ -235,10 +234,13 @@ export function Header() {
 
           <nav className="my-auto w-full py-6" aria-label="Mobile">
             {NAV.map((item, index) => {
+              // NAV is no longer a fixed-length tuple, so an added item must
+              // not walk off the end of the delay table.
+              const delays = MENU_DELAYS[index] ?? MENU_DELAYS[MENU_DELAYS.length - 1]
               const rowClass = `border-line hover:text-sky-brand grid grid-cols-[38px_1fr_auto] items-baseline gap-3 border-t py-3.5 transition-[opacity,translate,clip-path,color] duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)] last:border-b motion-reduce:transition-none ${
                 menuOpen
-                  ? `translate-y-0 opacity-100 [clip-path:inset(0_0_0_0)] ${MENU_DELAYS[index].open}`
-                  : `translate-y-[46px] opacity-0 [clip-path:inset(100%_0_0_0)] ${MENU_DELAYS[index].close}`
+                  ? `translate-y-0 opacity-100 [clip-path:inset(0_0_0_0)] ${delays.open}`
+                  : `translate-y-[46px] opacity-0 [clip-path:inset(100%_0_0_0)] ${delays.close}`
               }`
 
               const inner = (

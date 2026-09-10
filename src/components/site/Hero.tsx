@@ -53,9 +53,6 @@ export function Hero() {
             <a className="btn btn-primary" href="#contact">
               Book Free Measure
             </a>
-            <a className="btn btn-ghost" href="/estimate">
-              Pre-Quote Price Estimate
-            </a>
           </div>
 
           <p className="hud text-faint mt-7">

@@ -27,7 +27,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<Phase>("idle")
   const timers = useRef<number[]>([])
 
-  const isHome = normalize(pathname ?? "/") === "/"
+  const path = normalize(pathname ?? "/")
+  const isHome = path === "/"
+
+  /**
+   * The admin area is an internal tool, not part of the marketing site. It gets
+   * none of the public chrome — the marketing nav would just be a set of exits
+   * out of the tool, and the footer's sitemap is noise there. It brings its own
+   * header (see app/admin/layout.tsx).
+   */
+  const isAdmin = path === "/admin" || path.startsWith("/admin/")
 
   const clearTimers = useCallback(() => {
     timers.current.forEach((t) => window.clearTimeout(t))
@@ -93,6 +102,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
       : phase === "entering"
         ? " is-entering"
         : ""
+
+  if (isAdmin) {
+    return (
+      <>
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
+        <div className={`page-view${phaseClass}`}>{children}</div>
+      </>
+    )
+  }
 
   return (
     <>
