@@ -58,11 +58,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const nav = [
     { href: "/admin", label: "Projects" },
     { href: "/admin/new", label: "New project" },
+    { href: "/admin/measurement", label: "Measurement" },
   ]
 
   return (
     <main id="main" tabIndex={-1}>
-      <div className="border-line bg-ink-raised/40 border-b">
+      <div className="no-print border-line bg-ink-raised/40 border-b">
         <div className="shell flex flex-wrap items-center justify-between gap-4 py-4">
           <div className="flex items-center gap-6">
             <p className="hud text-sky-brand">Admin</p>
@@ -99,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 await logout()
                 sync()
               }}
-              className="hud border-line-strong text-mute hover:text-bone rounded-lg border px-3 py-2 transition-colors"
+              className="hud border-line-strong text-mute hover:text-bone h-11 rounded-lg border px-3 transition-colors"
             >
               Sign out
             </button>

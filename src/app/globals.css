@@ -166,6 +166,14 @@
     margin: 0;
   }
 
+  /* Screen furniture that must not reach paper: the admin bar, toolbars, and the
+     controls on the printable sheet itself. Declared once, globally, because the
+     element that needs hiding is usually in a different component from the page
+     doing the printing. */
+  .no-print {
+    /* nothing on screen */
+  }
+
   .skip-link {
     position: absolute;
     left: 1rem;
@@ -821,4 +829,22 @@
 
   .btn:hover,
   .btn:active { transform: none; }
+}
+
+
+/* ===========================================================================
+   Print
+   Unlayered on purpose: a print rule that loses to a Tailwind utility would
+   silently put the admin chrome back on the page someone hands to a workshop.
+   =========================================================================== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
 }

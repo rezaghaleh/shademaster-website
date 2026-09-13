@@ -13,14 +13,25 @@
  * cannot drift from the thing it is describing.
  */
 const apiOrigin = (() => {
-  const raw = process.env.NEXT_PUBLIC_ADMIN_API_BASE ?? "http://localhost:8080";
+  // An empty string is not nullish, so `?? default` does not catch it — and a
+  // hosting panel that creates the variable before you fill it in supplies exactly
+  // that. The build then died on `new URL("")` complaining the value was invalid,
+  // which is a confusing way to say "you forgot to set it". Blank is treated as
+  // unset, like any other absent configuration.
+  const configured = process.env.NEXT_PUBLIC_ADMIN_API_BASE;
+  const raw =
+    typeof configured === "string" && configured.trim() !== ""
+      ? configured.trim()
+      : "http://localhost:8080";
+
   try {
     return new URL(raw).origin;
   } catch {
-    // A malformed value would otherwise produce a policy that silently blocks
-    // everything. Fail the build instead.
+    // A value that is present but malformed is a different matter: it would produce
+    // a policy that silently blocks every API call. Fail the build instead.
     throw new Error(
-      `NEXT_PUBLIC_ADMIN_API_BASE is not a valid URL: ${JSON.stringify(raw)}`
+      `NEXT_PUBLIC_ADMIN_API_BASE is not a valid URL: ${JSON.stringify(raw)}. ` +
+        `Expected an origin such as https://api.example.com`
     );
   }
 })();
