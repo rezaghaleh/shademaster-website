@@ -58,7 +58,8 @@
     --sm-ink-raised: 216 55% 19%;  /* lifted navy — cards */
     --sm-bone: 0 0% 97%;           /* #F8F8F8 */
     --sm-mute: 210 22% 72%;
-    --sm-faint: 213 16% 55%;
+    /* 57%, not 55%: on a card the label landed at 4.35:1 and just missed AA. */
+    --sm-faint: 213 16% 57%;
     --sm-accent: 199 89% 48%;      /* sky-500  #0EA5E9 */
     --sm-accent-deep: 201 96% 39%; /* sky-600  #0284C7 */
     --sm-blue: 221 83% 53%;        /* blue-600 #2563EB */
@@ -73,6 +74,89 @@
 
     --sm-line: 210 40% 98% / 0.10;
     --sm-line-strong: 210 40% 98% / 0.2;
+
+    /* Text and icons drawn ON the accent fill. Dark mode puts navy on sky;
+       light mode puts white on a deeper sky. Named for the job rather than the
+       colour, because the two themes answer it differently. */
+    --sm-on-accent: 216 83% 14%;
+    /* Where a primary button goes on hover: brighter here, deeper in light. */
+    --sm-accent-hover: 204 94% 94%;
+
+    /* Semantic states. They were literal Tailwind reds and greens, which only
+       worked on a dark ground: red-400 on white is 2.5:1 and fails as text. */
+    --sm-danger: 0 91% 71%;   /* red-400 */
+    --sm-good: 158 64% 52%;   /* emerald-400 */
+
+    /* So the browser draws its own furniture to match: select popups, date
+       pickers, scrollbars and form controls follow this, not our tokens. */
+    color-scheme: dark;
+  }
+
+
+  /* =========================================================================
+     LIGHT
+
+     Not the dark palette inverted. Inverting gives you a white page with navy
+     text and no depth, because every relationship that made the dark theme
+     readable runs the other way: the ground was the darkest thing and cards sat
+     above it in lighter navy, while here the ground has to be the *darker* thing
+     so white cards can lift off it.
+
+     So: a cool grey ground, white cards, and the brand navy demoted from surface
+     to text. The accent moves from sky-500 to sky-700 — sky-500 on white is
+     2.9:1 and fails as text, and 101 places in this app colour text with it.
+     ========================================================================= */
+  :root[data-theme="light"] {
+    --background: 212 24% 93%;
+    --foreground: 216 55% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 216 55% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 55% 16%;
+
+    --primary: 201 90% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 212 22% 88%;
+    --secondary-foreground: 216 55% 16%;
+
+    --muted: 212 22% 88%;
+    --muted-foreground: 215 20% 38%;
+
+    --accent: 201 90% 33%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 82%;
+    --input: 214 20% 82%;
+    --ring: 201 90% 33%;
+
+    /* The ShadeMaster scale, re-grounded. The names keep their roles: ink is the
+       page, raised is what sits on it, bone is the text. */
+    --sm-ink: 212 24% 93%;         /* the ground, a soft cool grey */
+    --sm-ink-deep: 212 22% 87%;    /* recessed: bars and wells */
+    --sm-ink-raised: 0 0% 100%;    /* cards lift to white */
+    --sm-bone: 216 55% 16%;        /* body text: the brand navy, never black */
+    --sm-mute: 215 20% 38%;        /* secondary text, about 7:1 on a card */
+    --sm-faint: 214 15% 42%;       /* labels, about 5.5:1 — still readable */
+    --sm-accent: 201 90% 33%;      /* sky-700 */
+    --sm-accent-deep: 201 96% 27%; /* sky-800 */
+    --sm-accent-hover: 201 96% 27%;
+    --sm-on-accent: 0 0% 100%;
+
+    /* Hairlines invert too: white-on-navy becomes navy-on-white, at the alpha
+       that reads as a line rather than a smudge. */
+    --sm-line: 216 30% 25% / 0.14;
+    --sm-line-strong: 216 30% 25% / 0.28;
+
+    --sm-danger: 0 72% 42%;        /* red-700, for text on white */
+    --sm-good: 160 84% 30%;        /* emerald-700 */
+
+    color-scheme: light;
   }
 
   html {
@@ -110,7 +194,7 @@
 
   ::selection {
     background: hsl(var(--sm-accent));
-    color: hsl(var(--sm-ink));
+    color: hsl(var(--sm-on-accent));
   }
 }
 
@@ -182,7 +266,7 @@
     padding: 0.6rem 1rem;
     border-radius: 0.5rem;
     background: hsl(var(--sm-accent));
-    color: hsl(var(--sm-ink));
+    color: hsl(var(--sm-on-accent));
     font-weight: 600;
     transition: top 0.15s ease;
   }
@@ -215,14 +299,14 @@
 
   .btn-primary {
     background: hsl(var(--sm-accent));
-    color: hsl(var(--sm-ink));
+    color: hsl(var(--sm-on-accent));
     box-shadow:
       0 0 0 1px hsl(var(--sm-accent) / 0.45),
       0 14px 42px -14px hsl(var(--sm-accent) / 0.6);
   }
 
   .btn-primary:hover {
-    background: hsl(var(--sm-sky-soft));
+    background: hsl(var(--sm-accent-hover));
     box-shadow:
       0 0 0 1px hsl(var(--sm-accent) / 0.55),
       0 18px 50px -14px hsl(var(--sm-accent) / 0.55);

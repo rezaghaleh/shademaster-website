@@ -20,8 +20,8 @@ const STATUS_STYLE: Record<InvoiceSummary["status"], string> = {
   DRAFT: "border-line-strong text-faint",
   ISSUED: "border-sky-brand/50 text-sky-brand",
   SENT: "border-sky-brand/50 text-sky-brand",
-  PAID: "border-emerald-400/50 text-emerald-400",
-  VOID: "border-red-400/40 text-red-400",
+  PAID: "border-good/50 text-good",
+  VOID: "border-danger/40 text-danger",
 }
 
 /** Invoice list and generation for one project. */
@@ -179,7 +179,7 @@ export function InvoicePanel({
                       type="button"
                       aria-label={`Remove fee ${i + 1}`}
                       onClick={() => setFees(fees.filter((_, j) => j !== i))}
-                      className="border-line-strong text-faint hover:text-red-400 grid h-9 w-9 place-items-center rounded-full border"
+                      className="border-line-strong text-faint hover:text-danger grid h-9 w-9 place-items-center rounded-full border"
                     >
                       ×
                     </button>
@@ -226,7 +226,7 @@ export function InvoicePanel({
       )}
 
       {error && (
-        <p role="alert" className="mt-5 text-sm text-red-400">
+        <p role="alert" className="mt-5 text-sm text-danger">
           {error}
         </p>
       )}

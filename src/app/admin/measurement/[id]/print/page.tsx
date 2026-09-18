@@ -72,7 +72,7 @@ export default function PrintMeasurementSetPage() {
   if (error) {
     return (
       <main className="shell py-14">
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       </main>

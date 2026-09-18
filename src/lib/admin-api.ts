@@ -16,11 +16,15 @@
 export const ADMIN_API_BASE =
   process.env.NEXT_PUBLIC_ADMIN_API_BASE ?? "http://localhost:8080"
 
+/** Light or dark, saved on the account so it follows the person between devices. */
+export type Theme = "LIGHT" | "DARK"
+
 export type AdminSummary = {
   id: string
   username: string
   displayName: string
   role: "ADMIN" | "SUPER_ADMIN"
+  theme: Theme
 }
 
 export type ProductType = "ROLLER" | "ZEBRA"
@@ -224,6 +228,24 @@ export async function login(username: string, password: string): Promise<AdminSu
   currentUser = body.user
   notify()
   return body.user
+}
+
+/**
+ * Records the interface this account prefers.
+ *
+ * <p>The response is the updated account, which is kept as the current user so every
+ * subscriber sees the new theme without a refetch. Saved server-side on purpose: a
+ * localStorage-only choice would leave the same person with three different interfaces
+ * on three devices.
+ */
+export async function setTheme(theme: Theme): Promise<AdminSummary> {
+  const user = await request<AdminSummary>("/api/auth/me/theme", {
+    method: "PUT",
+    body: JSON.stringify({ theme }),
+  })
+  currentUser = user
+  notify()
+  return user
 }
 
 export async function logout(): Promise<void> {

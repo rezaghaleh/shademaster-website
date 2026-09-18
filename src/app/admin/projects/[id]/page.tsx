@@ -57,7 +57,7 @@ export default function ProjectDetailPage() {
   if (error && !project) {
     return (
       <div className="shell py-14">
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
         <Link href="/admin" className="btn btn-ghost mt-6">
@@ -109,7 +109,7 @@ export default function ProjectDetailPage() {
           <button
             type="button"
             onClick={remove}
-            className="hud rounded-lg border border-red-400/40 px-4 py-2.5 text-red-400 transition-colors hover:bg-red-400/10"
+            className="hud rounded-lg border border-danger/40 px-4 py-2.5 text-danger transition-colors hover:bg-danger/10"
           >
             Delete
           </button>
@@ -122,7 +122,7 @@ export default function ProjectDetailPage() {
         </p>
       )}
       {error && (
-        <p role="alert" className="mt-6 text-sm text-red-400">
+        <p role="alert" className="mt-6 text-sm text-danger">
           {error}
         </p>
       )}

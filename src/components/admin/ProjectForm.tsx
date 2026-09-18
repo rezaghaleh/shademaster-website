@@ -277,7 +277,7 @@ export function ProjectForm({
                       type="button"
                       onClick={() => removeItem(index)}
                       aria-label={`Remove window ${index + 1}`}
-                      className="border-line-strong text-faint hover:border-red-400/50 hover:text-red-400 grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-colors"
+                      className="border-line-strong text-faint hover:border-danger/50 hover:text-danger grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-colors"
                     >
                       ×
                     </button>
@@ -468,7 +468,7 @@ export function ProjectForm({
       </section>
 
       {error && (
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
@@ -519,7 +519,7 @@ function Field({
         aria-invalid={error ? true : undefined}
       />
       {error && (
-        <p role="alert" className="text-xs text-red-400">
+        <p role="alert" className="text-xs text-danger">
           {error}
         </p>
       )}

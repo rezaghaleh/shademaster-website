@@ -54,10 +54,14 @@ export function InchInput({
   const wholeValue = numeric === null ? "" : String(parts.whole)
   const fractionValue = numeric === null ? 0 : parts.fraction
 
+  // text-base, not the text-sm every other field uses: these are the numbers that
+  // get read back off a phone at arm's length on a ladder, and 2px of extra height
+  // is the difference between checking a measurement and squinting at it.
+  //
   // No width utility here: the grid tracks below own the sizing. Padding is set
   // per box rather than shared, so there is no second pair of competing classes.
   const field =
-    "border-line-strong bg-ink text-bone placeholder:text-faint focus-visible:border-sky-brand h-11 w-full rounded-lg border text-sm outline-none transition-colors disabled:opacity-40"
+    "border-line-strong bg-ink text-bone placeholder:text-faint focus-visible:border-sky-brand h-11 w-full rounded-lg border text-base outline-none transition-colors disabled:opacity-40"
 
   function emit(nextWhole: string, nextFraction: number) {
     if (nextWhole.trim() === "" && nextFraction === 0) {
@@ -115,7 +119,7 @@ export function InchInput({
           changes height as you type. */}
       <p
         id={`${idPrefix}-readout`}
-        className={`hud text-[0.62rem] tabular-nums ${
+        className={`hud text-[0.745rem] tabular-nums ${
           numeric === null || numeric === 0 ? "text-faint" : "text-mute"
         }`}
       >

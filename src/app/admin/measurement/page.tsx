@@ -176,7 +176,7 @@ export default function MeasurementSetsPage() {
       )}
 
       {error && (
-        <p role="alert" className="mt-6 text-sm text-red-400">
+        <p role="alert" className="mt-6 text-sm text-danger">
           {error}
         </p>
       )}

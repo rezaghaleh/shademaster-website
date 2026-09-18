@@ -532,7 +532,7 @@ export default function MeasurementSetPage() {
   if (error && !set) {
     return (
       <div className="shell py-14">
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
         <Link href="/admin/measurement" className="btn btn-ghost mt-6">
@@ -608,7 +608,7 @@ export default function MeasurementSetPage() {
           <button
             type="button"
             onClick={removeSet}
-            className="hud h-11 rounded-lg border border-red-400/40 px-4 text-red-400 transition-colors hover:bg-red-400/10"
+            className="hud h-11 rounded-lg border border-danger/40 px-4 text-danger transition-colors hover:bg-danger/10"
           >
             Delete all
           </button>
@@ -616,7 +616,7 @@ export default function MeasurementSetPage() {
       </header>
 
       {error && (
-        <p role="alert" className="mt-6 text-sm text-red-400">
+        <p role="alert" className="mt-6 text-sm text-danger">
           {error}
         </p>
       )}
@@ -634,7 +634,7 @@ export default function MeasurementSetPage() {
             aria-live="polite"
             className={`hud text-[0.6rem] ${
               headerState === "error"
-                ? "text-red-400"
+                ? "text-danger"
                 : headerState === "saved"
                   ? "text-sky-brand"
                   : "text-faint"
@@ -782,7 +782,13 @@ export default function MeasurementSetPage() {
             >
               Sheet {sheet.sheetIndex}{" "}
               {/* so a glance at the tabs shows which sheet still has room */}
-              <span className="text-faint ml-2 tabular-nums text-[0.6rem]">
+              <span
+                // Faint is readable on the bar, but not on the accent wash the current
+                // tab carries — it lands around 3:1 there in dark and 4:1 in light.
+                className={`ml-2 tabular-nums text-[0.6rem] ${
+                  current ? "text-mute" : "text-faint"
+                }`}
+              >
                 {sheet.rows.length}/{MAX_OPENINGS_PER_SHEET}
               </span>
             </button>
@@ -802,7 +808,7 @@ export default function MeasurementSetPage() {
           <button
             type="button"
             onClick={() => removeSheet(active.id)}
-            className="hud text-faint ml-auto h-11 rounded-lg px-3 transition-colors hover:text-red-400"
+            className="hud text-faint ml-auto h-11 rounded-lg px-3 transition-colors hover:text-danger"
           >
             Delete sheet {active.sheetIndex}
           </button>

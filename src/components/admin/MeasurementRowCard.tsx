@@ -13,6 +13,16 @@ import {
 const inputClass =
   "border-line-strong bg-ink text-bone placeholder:text-faint focus-visible:border-sky-brand h-11 w-full rounded-lg border px-3.5 text-sm outline-none transition-colors"
 
+/**
+ * The same field, sized for a measurement.
+ *
+ * Derived by swapping the size rather than by adding `text-base` alongside
+ * `text-sm`: two font-size utilities on one element are decided by which Tailwind
+ * happens to emit later, not by the order they are written in. That guessing game
+ * already cost this project a collapsed input once.
+ */
+const measurementInputClass = inputClass.replace("text-sm", "text-base")
+
 /** The two rooms that come up constantly, offered as one tap instead of typing. */
 export const NOTE_TAGS = ["Bed", "LR"] as const
 export type NoteTag = (typeof NOTE_TAGS)[number]
@@ -128,7 +138,7 @@ export function MeasurementRowCard({
             aria-live="polite"
             className={`hud text-[0.6rem] ${
               saveState === "error"
-                ? "text-red-400"
+                ? "text-danger"
                 : saveState === "saving"
                   ? "text-faint"
                   : saveState === "saved"
@@ -148,7 +158,7 @@ export function MeasurementRowCard({
             type="button"
             onClick={onDelete}
             aria-label={`Remove opening ${row.serialNo || ""}`}
-            className="border-line-strong text-faint hover:border-red-400/50 hover:text-red-400 grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors"
+            className="border-line-strong text-faint hover:border-danger/50 hover:text-danger grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors"
           >
             ×
           </button>
@@ -284,7 +294,7 @@ export function MeasurementRowCard({
               onChange={(v) => onChange({ fasciaCustom: v })}
             />
             {row.fasciaCustom === "" && (
-              <span className="block text-xs text-red-400">
+              <span className="block text-xs text-danger">
                 Needed before this row can save.
               </span>
             )}
@@ -315,7 +325,7 @@ export function MeasurementRowCard({
         <label className="space-y-2">
           <span className="hud text-faint block">Chain length</span>
           <input
-            className={`${inputClass} no-spin tabular-nums`}
+            className={`${measurementInputClass} no-spin tabular-nums`}
             type="number"
             inputMode="decimal"
             min="0"
@@ -362,7 +372,7 @@ export function MeasurementRowCard({
             aria-invalid={row.cutFabricCustom.trim() === "" ? true : undefined}
           />
           {row.cutFabricCustom.trim() === "" && (
-            <span className="block text-xs text-red-400">
+            <span className="block text-xs text-danger">
               Needed before this row can save.
             </span>
           )}

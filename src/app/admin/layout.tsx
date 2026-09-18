@@ -11,6 +11,7 @@ import {
   type AdminSummary,
 } from "@/lib/admin-api"
 import { AdminLogin } from "@/components/admin/AdminLogin"
+import { ThemeToggle, useAccountTheme } from "@/components/admin/ThemeToggle"
 
 /**
  * Auth gate for everything under /admin.
@@ -29,6 +30,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const [checking, setChecking] = useState(true)
   const [user, setUser] = useState<AdminSummary | null>(null)
+
+  // Applied here rather than in the nav so the sign-in screen is themed too, and so
+  // the choice is painted before anyone is signed in.
+  const { theme, choose, saving: savingTheme } = useAccountTheme()
 
   const sync = useCallback(() => setUser(getCurrentUser()), [])
 
@@ -90,6 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle theme={theme} onChoose={choose} saving={savingTheme} />
             <span className="text-mute text-sm">
               {user.displayName}
               <span className="hud text-faint ml-2">{user.role}</span>

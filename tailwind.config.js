@@ -60,6 +60,12 @@ module.exports = {
           soft: "hsl(var(--sm-sky-soft))",
         },
         brandblue: "hsl(var(--sm-blue))",
+        /* Semantic states, so they can differ per theme: red-400 reads well on
+           navy and fails on white, and the reverse for red-700. */
+        danger: "hsl(var(--sm-danger))",
+        good: "hsl(var(--sm-good))",
+        onaccent: "hsl(var(--sm-on-accent))",
+
         line: {
           DEFAULT: "hsl(var(--sm-line))",
           strong: "hsl(var(--sm-line-strong))",
