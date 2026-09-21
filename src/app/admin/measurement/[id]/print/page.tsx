@@ -118,9 +118,16 @@ export default function PrintMeasurementSetPage() {
         .ht th { font-weight: 700; text-align: center; background: #fff; }
         .ht .hdr td { font-size: 11px; height: 22px; }
         .ht .hdr .lbl { font-weight: 700; width: 130px; white-space: nowrap; }
-        .ht .rows td { height: 24px; }
+        /* What was filled in: 2px larger and bold, so the sheet is easy to read
+           on paper or on a phone. Only the answers — the column headers, the box
+           labels and the title keep their existing size and weight, and the row
+           height and padding are untouched so the grid and pagination do not move. */
+        /* The row stays 24px; the space around the text inside it gives way instead,
+           so the grid and the page breaks are exactly where they were. */
+        .ht .rows td { height: 24px; padding: 2px 4px; font-size: 12px; font-weight: 700; line-height: 14px; }
+        .ht .hdr .val { font-size: 13px; font-weight: 700; line-height: 15px; }
         .ht .c { text-align: center; }
-        .ht .tick { font-size: 12px; }
+        .ht .tick { font-size: 14px; line-height: 14px; }
 
         /* On screen, a visible gap so it reads as a stack of pages rather than one
            long table. In print the gap is the page break itself. */
@@ -201,17 +208,17 @@ export default function PrintMeasurementSetPage() {
                 <tbody className="hdr">
                   <tr>
                     <td className="lbl">CONTRACTOR</td>
-                    <td>{set.contractor ?? ""}</td>
+                    <td className="val">{set.contractor ?? ""}</td>
                     <td className="lbl" style={{ width: 90 }}>
                       DATE
                     </td>
-                    <td style={{ width: 220 }}>{set.sheetDate ?? ""}</td>
+                    <td className="val" style={{ width: 220 }}>{set.sheetDate ?? ""}</td>
                   </tr>
                   <tr>
                     <td className="lbl">PROJECT NAME</td>
-                    <td>{set.projectName ?? ""}</td>
+                    <td className="val">{set.projectName ?? ""}</td>
                     <td className="lbl">MEASUREMENT</td>
-                    <td>
+                    <td className="val">
                       {/* both boxes always print, with the one that was used ticked */}
                       TAPE [{set.measurementMethod === "TAPE" ? "X" : " "}] &nbsp; LASER [
                       {set.measurementMethod === "LASER" ? "X" : " "}]
@@ -219,27 +226,33 @@ export default function PrintMeasurementSetPage() {
                   </tr>
                   <tr>
                     <td className="lbl">BUILDING/LEVEL #</td>
-                    <td>{set.buildingLevel ?? ""}</td>
+                    <td className="val">{set.buildingLevel ?? ""}</td>
                     <td className="lbl">INSTALLER</td>
-                    <td>{set.installer ?? ""}</td>
+                    <td className="val">{set.installer ?? ""}</td>
                   </tr>
                 </tbody>
               </table>
 
               <table>
                 <thead>
+                  {/*
+                    CUT FABRIC carries free text and is the one column that ran out of
+                    room at the larger size, wrapping to a second line and pushing a full
+                    sheet onto an extra page. The width comes from WIDTH, HEIGHT and
+                    MOTORS, which hold six characters at most and had it to spare.
+                  */}
                   <tr>
                     <th style={{ width: "5%" }}>Unit</th>
                     <th style={{ width: "5%" }}>S.NO</th>
-                    <th style={{ width: "9%" }}>WIDTH</th>
-                    <th style={{ width: "9%" }}>HEIGHT</th>
+                    <th style={{ width: "7.5%" }}>WIDTH</th>
+                    <th style={{ width: "7.5%" }}>HEIGHT</th>
                     <th style={{ width: "5%" }}>CONT</th>
                     <th style={{ width: "5%" }}>OM FW</th>
                     <th style={{ width: "6%" }}>END CAP</th>
-                    <th style={{ width: "11%" }}>CUT FABRIC</th>
+                    <th style={{ width: "15%" }}>CUT FABRIC</th>
                     <th style={{ width: "8%" }}>CHAIN LENGTH</th>
                     <th style={{ width: "7%" }}>FASCIA SIZE</th>
-                    <th style={{ width: "8%" }}>MOTORS</th>
+                    <th style={{ width: "7%" }}>MOTORS</th>
                     <th>NOTES</th>
                   </tr>
                 </thead>
