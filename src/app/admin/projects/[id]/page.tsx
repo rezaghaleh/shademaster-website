@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { ProjectForm } from "@/components/admin/ProjectForm"
-import { InvoicePanel } from "@/components/admin/InvoicePanel"
+import { ProjectInvoiceCard } from "@/components/admin/ProjectInvoiceCard"
+import { ProjectFinancialSummary } from "@/components/admin/ProjectFinancialSummary"
 import {
   ApiError,
   deleteProject,
@@ -48,7 +49,7 @@ export default function ProjectDetailPage() {
       // The API refuses without force when issued invoices exist; the dialog
       // above is the confirmation that justifies passing it.
       await deleteProject(id, true)
-      router.push("/admin")
+      router.push("/admin/projects")
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not delete this project")
     }
@@ -60,7 +61,7 @@ export default function ProjectDetailPage() {
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
-        <Link href="/admin" className="btn btn-ghost mt-6">
+        <Link href="/admin/projects" className="btn btn-ghost mt-6">
           Back to projects
         </Link>
       </div>
@@ -78,7 +79,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="shell py-10 md:py-14">
       <nav aria-label="Breadcrumb" className="hud text-faint">
-        <Link href="/admin" className="hover:text-bone transition-colors">
+        <Link href="/admin/projects" className="hover:text-bone transition-colors">
           Projects
         </Link>
         <span className="mx-2">/</span>
@@ -91,7 +92,12 @@ export default function ProjectDetailPage() {
             {project.projectName}
           </h1>
           <p className="text-mute mt-3">
-            {project.customerName}
+            <Link
+              href={`/admin/customers/${project.customerId}`}
+              className="text-bone hover:text-sky-brand underline-offset-4 transition-colors hover:underline"
+            >
+              {project.customerName}
+            </Link>
             {project.city && <span className="text-faint"> · {project.city}</span>}
           </p>
           <p className="text-faint mt-1 text-sm">
@@ -133,6 +139,8 @@ export default function ProjectDetailPage() {
             submitLabel="Save changes"
             initial={{
               projectName: project.projectName,
+              defaultMarkupPercent: Number(project.defaultMarkupPercent),
+              customerId: project.customerId,
               customerName: project.customerName,
               addressLine1: project.addressLine1 ?? "",
               addressLine2: project.addressLine2 ?? "",
@@ -155,6 +163,8 @@ export default function ProjectDetailPage() {
                 // a line without one stays on the calculated price.
                 unitPriceOverride:
                   i.unitPriceOverride == null ? null : Number(i.unitPriceOverride),
+                costPerUnit: i.costPerUnit == null ? null : Number(i.costPerUnit),
+                markupOverridePercent: i.markupOverridePercent == null ? null : Number(i.markupOverridePercent),
               })),
             }}
             onSubmit={async (values) => {
@@ -194,6 +204,13 @@ export default function ProjectDetailPage() {
                       {item.priceOverridden && (
                         <span className="hud text-sky-brand ml-2">manual price</span>
                       )}
+                      <span className="mt-2 block text-xs text-faint tabular-nums print:hidden">
+                        Internal · Cost / shade {money(item.baseCostPerUnit)}{" "}
+                        ({item.costPerUnit != null ? "supplier" : "calculated"}) ·{" "}
+                        {item.markupOverridePercent == null ? "Project" : "Custom"} markup {Number(item.effectiveMarkupPercent)}% ·
+                        Total cost {money(item.financials.totalCost)} · Profit {money(item.financials.grossProfit)} ·
+                        Margin {Number(item.financials.profitMarginPercent).toFixed(2)}%
+                      </span>
                     </span>
                     <span className="text-mute text-sm tabular-nums">
                       {item.priceOverridden && (
@@ -222,15 +239,19 @@ export default function ProjectDetailPage() {
             </div>
 
             <p className="text-faint mt-4 text-xs leading-[1.6]">
-              Calculated with the same formula as the public pre-quote calculator.
-              Tax is not included here — it is applied when an invoice is created.
+              Each price / shade is the window&rsquo;s cost — calculated from its measurements, or
+              the supplier cost — plus markup, unless a price was typed by hand. Tax is not
+              included here — it is applied when an invoice is created.
             </p>
           </section>
 
-          <InvoicePanel
+          <ProjectFinancialSummary financials={project.financials} markup={project.defaultMarkupPercent} />
+
+          <ProjectInvoiceCard
             projectId={project.id}
+            invoice={project.primaryInvoice}
+            invoiceCount={project.invoiceCount}
             canInvoice={project.items.length > 0}
-            onChanged={load}
           />
         </>
       )}

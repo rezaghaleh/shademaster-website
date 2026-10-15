@@ -86,6 +86,10 @@
        worked on a dark ground: red-400 on white is 2.5:1 and fails as text. */
     --sm-danger: 0 91% 71%;   /* red-400 */
     --sm-good: 158 64% 52%;   /* emerald-400 */
+    /* An opening that is waiting to be measured. Amber, because it reads as "not yet"
+       rather than "wrong": distinct from the sky of a finished row and the red of an
+       error, which is exactly the distinction a pending opening needs. */
+    --sm-pending: 43 96% 56%; /* amber-400 */
 
     /* So the browser draws its own furniture to match: select popups, date
        pickers, scrollbars and form controls follow this, not our tokens. */
@@ -154,7 +158,8 @@
     --sm-line-strong: 216 30% 25% / 0.28;
 
     --sm-danger: 0 72% 42%;        /* red-700, for text on white */
-    --sm-good: 160 84% 30%;        /* emerald-700 */
+    --sm-good: 160 90% 21%;        /* deeper than emerald-700, which is only 4.2:1 on white */
+    --sm-pending: 23 83% 31%;      /* amber-800: amber-400 is unreadable on white */
 
     color-scheme: light;
   }

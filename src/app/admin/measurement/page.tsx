@@ -211,11 +211,18 @@ export default function MeasurementSetsPage() {
                     {[set.contractor, set.buildingLevel].filter(Boolean).join(" · ") ||
                       "No contractor or building recorded"}
                   </span>
+                  {set.customerName && (
+                    <span className="text-faint mt-1 block text-xs">Customer: {set.customerName}</span>
+                  )}
                 </span>
 
                 <span className="hud text-faint shrink-0 text-right text-[0.6rem]">
                   <span className="text-sky-brand block">
                     {set.rowCount} opening{set.rowCount === 1 ? "" : "s"}
+                    {/* so a job with openings still to measure stands out in the list */}
+                    {set.pendingCount > 0 && (
+                      <span className="text-pending"> · {set.pendingCount} pending</span>
+                    )}
                   </span>
                   <span className="mt-1.5 block">
                     {[set.installer, set.measurementMethod, set.sheetDate]

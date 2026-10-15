@@ -64,6 +64,7 @@ module.exports = {
            navy and fails on white, and the reverse for red-700. */
         danger: "hsl(var(--sm-danger))",
         good: "hsl(var(--sm-good))",
+        pending: "hsl(var(--sm-pending))",
         onaccent: "hsl(var(--sm-on-accent))",
 
         line: {

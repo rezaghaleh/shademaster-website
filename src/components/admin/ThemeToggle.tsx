@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { Moon, Sun } from "lucide-react"
 import { getCurrentUser, setTheme, subscribeToAuth, type Theme } from "@/lib/admin-api"
 
 /**
@@ -140,10 +141,9 @@ export function ThemeToggle({
       className="hud border-line-strong text-mute hover:text-bone hover:border-sky-brand/45 flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3 transition-colors disabled:opacity-60"
     >
       {/* the icon shows the state you are in; the label says where a tap leads */}
-      <span aria-hidden="true" className="text-[0.95rem] leading-none">
-        {light ? "☀" : "☾"}
-      </span>
-      <span className="hidden sm:inline">{light ? "Light" : "Dark"}</span>
+      {light ? <Sun aria-hidden="true" className="h-4 w-4" /> : <Moon aria-hidden="true" className="h-4 w-4" />}
+      {/* dropped where the admin bar is a single row and needs the room */}
+      <span className="hidden sm:inline xl:hidden">{light ? "Light" : "Dark"}</span>
     </button>
   )
 }

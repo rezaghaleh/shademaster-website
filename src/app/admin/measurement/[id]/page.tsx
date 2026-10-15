@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatInches } from "@/lib/fractions"
+import { CustomerLinkField } from "@/components/admin/CustomerLinkField"
 import {
   MeasurementRowCard,
   joinNote,
@@ -14,6 +15,8 @@ import {
 import {
   ApiError,
   MAX_OPENINGS_PER_SHEET,
+  MAX_SHEET_TITLE_LENGTH,
+  SHEET_TITLE_OPTIONS,
   addMeasurementRow,
   addSheetToSet,
   deleteMeasurementRow,
@@ -26,6 +29,7 @@ import {
   type MeasurementRowInput,
   type MeasurementRowView,
   type MeasurementSetView,
+  type SheetTitleMode,
 } from "@/lib/admin-api"
 
 const inputClass =
@@ -46,8 +50,9 @@ function toEditable(row: MeasurementRowView): EditableRow {
     id: row.id,
     serialNo: row.serialNo,
     unit: row.unit ?? "",
-    width: row.width,
-    height: row.height,
+    // absent on a pending opening, which has no size yet
+    width: row.width ?? "",
+    height: row.height ?? "",
     cont: row.cont ?? null,
     omFw: row.omFw,
     endCap: row.endCap,
@@ -59,6 +64,7 @@ function toEditable(row: MeasurementRowView): EditableRow {
     motorControl: row.motorControl ?? null,
     notesTag: splitNote(row.notes).tag,
     notesText: splitNote(row.notes).text,
+    pending: row.pending ?? false,
   }
 }
 
@@ -71,8 +77,11 @@ function toInput(row: EditableRow, effectiveUnit: string): MeasurementRowInput {
     // blank means "leave whatever is on the sheet"; the server only suggests a
     // number for a row that has never had one
     serialNo: row.serialNo === "" ? null : row.serialNo,
-    width: row.width === "" ? 0 : row.width,
-    height: row.height === "" ? 0 : row.height,
+    // A pending opening sends no size at all. Anything typed before it was marked stays
+    // in the form, so un-marking it gives it back, but it never reaches the sheet.
+    width: row.pending ? null : row.width === "" ? 0 : row.width,
+    height: row.pending ? null : row.height === "" ? 0 : row.height,
+    pending: row.pending,
     cont: row.cont,
     omFw: row.omFw,
     endCap: row.endCap,
@@ -153,6 +162,7 @@ function renumber(rows: EditableRow[], affected: Set<string>): EditableRow[] {
 
 /** The row's measurements as they were written, for the delete confirmation. */
 function describe(row: EditableRow): string {
+  if (row.pending) return "Pending — not measured yet"
   if (row.width === "" || row.height === "") return ""
   return `${formatInches(row.width)}" x ${formatInches(row.height)}"`
 }
@@ -165,7 +175,10 @@ function describe(row: EditableRow): string {
  * that can only come back as a 400 — the installer is still typing, not making a mistake.
  */
 function isSendable(row: EditableRow): boolean {
-  if (row.width === "" || row.height === "" || row.width <= 0 || row.height <= 0) return false
+  // A pending opening is complete as it stands: it is a line on the sheet that says
+  // "come back to this". Everything else needs both sizes before it is worth sending.
+  if (!row.pending && (row.width === "" || row.height === "" || row.width <= 0 || row.height <= 0))
+    return false
   if (row.serialNo !== "" && row.serialNo <= 0) return false
   if (row.cutFabric === "CUSTOM" && row.cutFabricCustom.trim() === "") return false
   if (row.fascia === "CUSTOM" && row.fasciaCustom === "") return false
@@ -198,6 +211,30 @@ function OpeningCount({ used }: { used: number }) {
   )
 }
 
+/**
+ * How many openings a sheet needs before "Add sheet" is offered at the foot of the list.
+ *
+ * <p>Below this the sheet has barely started, and a second Add sheet beside "Add opening"
+ * is mostly a way to open a page by mistake — the one at the top is still there. Past it,
+ * finishing a level on a fresh page with a few spots unused is a reasonable choice, and
+ * the bottom of a long list is where that decision gets made.
+ */
+const ADD_SHEET_FROM_OPENINGS = 6
+
+/** How many openings on this sheet are still waiting to be measured; nothing when none. */
+function PendingCount({ count }: { count: number }) {
+  if (count === 0) return null
+  return (
+    <span
+      aria-label={`${count} pending ${count === 1 ? "opening" : "openings"} on this sheet`}
+      className="hud border-pending/55 bg-pending/10 text-pending flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[0.7rem] tabular-nums"
+    >
+      <span aria-hidden="true" className="bg-pending h-1.5 w-1.5 rounded-full" />
+      {count} pending
+    </span>
+  )
+}
+
 /** Loading a sheet blanks the unit on every row that repeats the one above it. */
 function loadRows(rows: MeasurementRowView[]): EditableRow[] {
   const loaded = rows.map(toEditable)
@@ -224,11 +261,16 @@ export default function MeasurementSetPage() {
   // edit here changes what every sheet in it prints.
   const [projectName, setProjectName] = useState("")
   const [contractor, setContractor] = useState("")
+  // the customer the sheet is for, when known — a link, saved with the header
+  const [customer, setCustomer] = useState<{ id: string; name: string } | null>(null)
   const [buildingLevel, setBuildingLevel] = useState("")
   const [sheetDate, setSheetDate] = useState("")
   const [method, setMethod] = useState<MeasurementMethod | null>(null)
   const [installer, setInstaller] = useState("")
   const [notes, setNotes] = useState("")
+  // What prints at the top of the sheet. HT Blinds unless someone changes it.
+  const [titleMode, setTitleMode] = useState<SheetTitleMode>("HT_BLINDS")
+  const [titleCustom, setTitleCustom] = useState("")
 
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   // Set once the user has actually edited something. Without it, loading the set
@@ -251,11 +293,14 @@ export default function MeasurementSetPage() {
         setActiveSheetId(s.sheets.length > 0 ? s.sheets[s.sheets.length - 1].id : null)
         setProjectName(s.projectName ?? "")
         setContractor(s.contractor ?? "")
+        setCustomer(s.customerId && s.customerName ? { id: s.customerId, name: s.customerName } : null)
         setBuildingLevel(s.buildingLevel ?? "")
         setSheetDate(s.sheetDate ?? "")
         setMethod(s.measurementMethod ?? null)
         setInstaller(s.installer ?? "")
         setNotes(s.notes ?? "")
+        setTitleMode(s.titleMode ?? "HT_BLINDS")
+        setTitleCustom(s.titleCustom ?? "")
       })
       .catch((err) =>
         setError(err instanceof ApiError ? err.message : "Could not load these sheets")
@@ -273,8 +318,14 @@ export default function MeasurementSetPage() {
     clearTimeout(timers.current.header)
     timers.current.header = setTimeout(async () => {
       setHeaderState("saving")
+      // "Custom" with nothing typed yet is a moment in the middle of an edit, not a
+      // title. Leaving titleMode out tells the server to keep whatever title it has, so
+      // the rest of the header still saves while the custom text is being typed.
+      const titleReady = titleMode !== "CUSTOM" || titleCustom.trim() !== ""
       try {
         await updateMeasurementSet(setId, {
+          customerId: customer ? customer.id : undefined,
+          clearCustomer: customer ? undefined : true,
           projectName: projectName.trim() || null,
           contractor: contractor.trim() || null,
           buildingLevel: buildingLevel.trim() || null,
@@ -282,13 +333,27 @@ export default function MeasurementSetPage() {
           measurementMethod: method,
           installer: installer.trim() || null,
           notes: notes.trim() || null,
+          titleMode: titleReady ? titleMode : undefined,
+          titleCustom: titleMode === "CUSTOM" ? titleCustom.trim() || null : null,
         })
         setHeaderState("saved")
       } catch {
         setHeaderState("error")
       }
     }, AUTOSAVE_DELAY_MS)
-  }, [setId, projectName, contractor, buildingLevel, sheetDate, method, installer, notes])
+  }, [
+    setId,
+    customer,
+    projectName,
+    contractor,
+    buildingLevel,
+    sheetDate,
+    method,
+    installer,
+    notes,
+    titleMode,
+    titleCustom,
+  ])
 
   useEffect(() => {
     if (!dirty.current.header) return
@@ -390,7 +455,14 @@ export default function MeasurementSetPage() {
     )
   }
 
-  function addRow(sheetId: string) {
+  /**
+   * Adds an opening to the sheet.
+   *
+   * @param pending true for the "Pending opening" action: an opening that is on the sheet
+   *                but could not be measured. It saves straight away — it is complete as
+   *                it is — and takes the next S.NO in its unit like any other.
+   */
+  function addRow(sheetId: string, pending = false) {
     // The id is generated here, not by the server: if the response is lost and the
     // request is retried, the API updates this row rather than creating a second one.
     const id = crypto.randomUUID()
@@ -426,9 +498,13 @@ export default function MeasurementSetPage() {
           motorControl: null,
           notesTag: null,
           notesText: "",
+          pending,
         }
-        // Shown immediately; it reaches the server once it has both measurements, so
-        // an empty card never produces a request that can only be rejected.
+        // Shown immediately; a measured opening reaches the server once it has both
+        // sizes, so an empty card never produces a request that can only be rejected.
+        // A pending one is already complete — "come back to this" — so it saves now,
+        // under the unit it inherited.
+        if (pending) saveRow(sheetId, blank, unit)
         return { ...sheet, rows: [...sheet.rows, blank] }
       })
     )
@@ -558,6 +634,8 @@ export default function MeasurementSetPage() {
   const totalOpenings = sheets.reduce((n, s) => n + s.rows.length, 0)
   const activeUnits = active ? effectiveUnits(active.rows) : []
   const sheetFull = (active?.rows.length ?? 0) >= MAX_OPENINGS_PER_SHEET
+  const activePending = active ? active.rows.filter((r) => r.pending).length : 0
+  const totalPending = sheets.reduce((n, s) => n + s.rows.filter((r) => r.pending).length, 0)
 
   return (
     <div className="shell py-10 md:py-14">
@@ -577,7 +655,11 @@ export default function MeasurementSetPage() {
           <p className="text-mute mt-3 text-sm">
             {buildingLevel && <span>{buildingLevel} · </span>}
             {sheets.length} sheet{sheets.length === 1 ? "" : "s"} · {totalOpenings} opening
-            {totalOpenings === 1 ? "" : "s"} · changes save on their own
+            {totalOpenings === 1 ? "" : "s"}
+            {totalPending > 0 && (
+              <span className="text-pending"> · {totalPending} pending</span>
+            )}{" "}
+            · changes save on their own
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -681,6 +763,14 @@ export default function MeasurementSetPage() {
             />
           </label>
 
+          <CustomerLinkField
+            value={customer}
+            onChange={(next) => {
+              onHeaderEdit()
+              setCustomer(next)
+            }}
+          />
+
           <label className="space-y-2">
             <span className="hud text-faint block">Building / level #</span>
             <input
@@ -756,6 +846,82 @@ export default function MeasurementSetPage() {
             }}
           />
         </label>
+
+        {/*
+          The bold title at the top of the printed sheet. Kept apart from the job fields
+          above because it is about the document rather than the job — and per set, so
+          reprinting an old job always gives back the document that was sent.
+        */}
+        <div className="border-line mt-6 border-t pt-5">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <span className="hud text-faint block" id="sheet-title-label">
+                Printed sheet title
+              </span>
+              <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="sheet-title-label">
+                {SHEET_TITLE_OPTIONS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    aria-pressed={titleMode === o.value}
+                    onClick={() => {
+                      onHeaderEdit()
+                      setTitleMode(o.value)
+                    }}
+                    className={`hud h-11 rounded-lg border px-2 transition-colors ${
+                      titleMode === o.value
+                        ? "border-sky-brand bg-sky-brand/15 text-bone"
+                        : "border-line-strong text-mute hover:text-bone"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* only while Custom is chosen, and required there */}
+            {titleMode === "CUSTOM" && (
+              <label className="space-y-2">
+                <span className="hud text-faint block">
+                  Custom title <span className="text-sky-brand">*</span>
+                </span>
+                <input
+                  className={inputClass}
+                  value={titleCustom}
+                  maxLength={MAX_SHEET_TITLE_LENGTH}
+                  onChange={(e) => {
+                    onHeaderEdit()
+                    setTitleCustom(e.target.value)
+                  }}
+                  placeholder="ShadeMaster"
+                  aria-invalid={titleCustom.trim() === "" ? true : undefined}
+                />
+                {titleCustom.trim() === "" && (
+                  <span className="block text-xs text-danger">
+                    Type the title to print. Until then the sheet keeps its current title.
+                  </span>
+                )}
+              </label>
+            )}
+
+            {/* what will actually come out of the printer, so there is no guessing */}
+            <div className="space-y-2">
+              <span className="hud text-faint block">Prints as</span>
+              <p className="border-line-strong flex h-11 items-center rounded-lg border border-dashed px-3.5 text-sm">
+                {titleMode === "HT_BLINDS" ? (
+                  <span className="text-bone font-bold tracking-wide">HT BLINDS</span>
+                ) : titleMode === "NONE" ? (
+                  <span className="text-faint">No title — the sheet starts at SHEET#</span>
+                ) : titleCustom.trim() ? (
+                  <span className="text-bone truncate font-bold">{titleCustom.trim()}</span>
+                ) : (
+                  <span className="text-faint">—</span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* -------------------------------------------------------- sheet tabs */}
@@ -867,8 +1033,11 @@ export default function MeasurementSetPage() {
           {/* shown even on an empty sheet, so the count is at the foot of the list either way */}
           {
             <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <OpeningCount used={active.rows.length} />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <OpeningCount used={active.rows.length} />
+                  <PendingCount count={activePending} />
+                </div>
                 {!sheetFull && (
                   <span className="hud text-faint text-[0.6rem]">
                     {MAX_OPENINGS_PER_SHEET - active.rows.length} spot
@@ -896,13 +1065,50 @@ export default function MeasurementSetPage() {
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => addRow(active.id)}
-                  className="btn btn-ghost !h-12 w-full !py-0"
-                >
-                  + Add opening
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => addRow(active.id)}
+                    className="btn btn-ghost !h-12 w-full !py-0"
+                  >
+                    + Add opening
+                  </button>
+
+                  <div
+                    className={`grid gap-3 ${
+                      active.rows.length >= ADD_SHEET_FROM_OPENINGS ? "sm:grid-cols-2" : ""
+                    }`}
+                  >
+                    {/*
+                      For the opening that cannot be measured right now. One tap puts it on
+                      the sheet with its own line and S.NO, marked pending, so it is not
+                      forgotten — and it prints as PENDING until someone goes back.
+                    */}
+                    <button
+                      type="button"
+                      onClick={() => addRow(active.id, true)}
+                      className="btn border-pending/55 text-pending hover:bg-pending/10 !h-12 w-full !py-0"
+                    >
+                      <span aria-hidden="true" className="bg-pending h-2 w-2 rounded-full" />
+                      Pending opening
+                    </button>
+
+                    {/*
+                      Finish this sheet early and carry on on a fresh page. Only once the
+                      sheet is properly under way — see ADD_SHEET_FROM_OPENINGS.
+                    */}
+                    {active.rows.length >= ADD_SHEET_FROM_OPENINGS && (
+                      <button
+                        type="button"
+                        onClick={addSheet}
+                        disabled={addingSheet}
+                        className="btn btn-ghost !h-12 w-full !py-0 disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {addingSheet ? "Adding…" : `+ Add sheet ${sheets.length + 1}`}
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           }
@@ -914,7 +1120,9 @@ export default function MeasurementSetPage() {
             whenever you change the unit. A sheet holds {MAX_OPENINGS_PER_SHEET} openings,
             the same as the paper form; at {MAX_OPENINGS_PER_SHEET}/{MAX_OPENINGS_PER_SHEET}{" "}
             add another sheet — the header carries over and the openings already taken stay
-            where they are.
+            where they are. From {ADD_SHEET_FROM_OPENINGS} openings you can also start the next
+            sheet early from here. An opening you cannot measure today goes in as Pending: it
+            keeps its line and prints as PENDING until its measurements are added.
           </p>
         </section>
       )}

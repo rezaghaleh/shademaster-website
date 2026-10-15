@@ -75,6 +75,14 @@ export type EditableRow = {
   notesTag: NoteTag | null
   /** Whatever follows the prefix — or the whole note when there is no prefix. */
   notesText: string
+  /**
+   * Not measured yet — the unit was locked or the window could not be reached.
+   *
+   * Any width and height already typed are kept here while it is pending, so un-marking
+   * it gives them back; but they are not sent, because the sheet prints PENDING for this
+   * row and a number beside that would be read as a measurement.
+   */
+  pending: boolean
 }
 
 export type SaveState = "idle" | "saving" | "saved" | "error"
@@ -132,8 +140,24 @@ export function MeasurementRowCard({
   const id = `row-${row.id}`
 
   return (
-    <li className="border-line bg-ink/60 rounded-xl border p-5">
-      <div className="flex items-center justify-end gap-3">
+    <li
+      // A pending card is outlined in amber from edge to edge, not just badged: scrolling
+      // past a long sheet, the colour is what catches the eye before any text does.
+      //
+      // The border only — no amber wash behind it. A wash lifts the ground just enough in
+      // dark mode to drop the card's grey labels below readable contrast (4.2:1), and
+      // the outline, badge and dashed panel already say "pending" without it.
+      className={`bg-ink/60 rounded-xl border p-5 transition-colors ${
+        row.pending ? "border-pending/60" : "border-line"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-end gap-3">
+          {row.pending && (
+            <span className="hud border-pending/60 bg-pending/15 text-pending mr-auto flex items-center gap-2 rounded-md border px-2.5 py-1 text-[0.62rem]">
+              <span aria-hidden="true" className="bg-pending h-1.5 w-1.5 rounded-full" />
+              Pending
+            </span>
+          )}
           <span
             aria-live="polite"
             className={`hud text-[0.6rem] ${
@@ -154,6 +178,21 @@ export function MeasurementRowCard({
                   ? "Not saved"
                   : "·"}
           </span>
+          {/*
+            Only offered while the opening is measured. Once it is pending the badge says
+            so, and the way back is "Add measurements" in the card — a second amber
+            "Pending" up here would read as a duplicate rather than a control. Next to
+            delete because it is about the whole opening, not one of its values.
+          */}
+          {!row.pending && (
+            <button
+              type="button"
+              onClick={() => onChange({ pending: true })}
+              className="hud border-pending/45 text-pending hover:bg-pending/10 h-9 rounded-full border px-3.5 text-[0.62rem] transition-colors"
+            >
+              Mark pending
+            </button>
+          )}
           <button
             type="button"
             onClick={onDelete}
@@ -196,20 +235,40 @@ export function MeasurementRowCard({
           />
         </label>
 
-        <InchInput
-          compact
-          idPrefix={`${id}-width`}
-          label="Width"
-          value={row.width}
-          onChange={(v) => onChange({ width: v })}
-        />
-        <InchInput
-          compact
-          idPrefix={`${id}-height`}
-          label="Height"
-          value={row.height}
-          onChange={(v) => onChange({ height: v })}
-        />
+        {row.pending ? (
+          // Where the two sizes would be, so the gap is exactly where the missing
+          // measurements belong — and nothing that looks like a number is on screen.
+          <div className="border-pending/50 col-span-2 flex flex-col justify-center gap-3 rounded-lg border border-dashed px-4 py-3">
+            <p className="text-bone text-sm">
+              <span className="text-pending font-semibold">Not measured yet.</span> Prints as
+              PENDING across the width and height until the measurements are added.
+            </p>
+            <button
+              type="button"
+              onClick={() => onChange({ pending: false })}
+              className="btn btn-ghost !h-10 self-start !py-0 !text-[0.82rem]"
+            >
+              Add measurements
+            </button>
+          </div>
+        ) : (
+          <>
+            <InchInput
+              compact
+              idPrefix={`${id}-width`}
+              label="Width"
+              value={row.width}
+              onChange={(v) => onChange({ width: v })}
+            />
+            <InchInput
+              compact
+              idPrefix={`${id}-height`}
+              label="Height"
+              value={row.height}
+              onChange={(v) => onChange({ height: v })}
+            />
+          </>
+        )}
       </div>
 
       {/* control side, and the three tick boxes */}

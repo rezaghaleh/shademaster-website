@@ -128,6 +128,7 @@ export default function PrintMeasurementSetPage() {
         .ht .hdr .val { font-size: 13px; font-weight: 700; line-height: 15px; }
         .ht .c { text-align: center; }
         .ht .tick { font-size: 14px; line-height: 14px; }
+        .ht .rows td.pending { letter-spacing: .14em; }
 
         /* On screen, a visible gap so it reads as a stack of pages rather than one
            long table. In print the gap is the page break itself. */
@@ -190,10 +191,25 @@ export default function PrintMeasurementSetPage() {
             className={`ht-page${sheetNo < total - 1 ? " page-break" : ""}`}
           >
             <div className="ht ht-sheet">
-              <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 8 }}>
-                <div className="ht-title" style={{ flex: 1 }}>
-                  HT BLINDS
-                </div>
+              {/*
+                HT BLINDS, a typed title, or nothing — decided by the server as sheetTitle,
+                the same value the PDF uses, so Print and Download always agree. With no
+                title the row is just the SHEET# line, held to the right; nothing is left
+                behind where the title was.
+              */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "flex-end",
+                  marginBottom: 8,
+                }}
+              >
+                {set.sheetTitle && (
+                  <div className="ht-title" style={{ flex: 1 }}>
+                    {set.sheetTitle}
+                  </div>
+                )}
                 <div className="ht-sheetno" style={{ width: 160 }}>
                   SHEET# {sheet.sheetIndex} of {total}
                 </div>
@@ -261,9 +277,23 @@ export default function PrintMeasurementSetPage() {
                     <tr key={row.id}>
                       <td className="c">{unitColumn(sheet.rows, i)}</td>
                       <td className="c">{row.serialNo}</td>
-                      {/* the fractions as written on site, not the decimal */}
-                      <td className="c">{formatInches(row.width)}</td>
-                      <td className="c">{formatInches(row.height)}</td>
+                      {row.pending ? (
+                        // Not measured yet: PENDING across both size columns, as it is
+                        // written on paper, so nothing here can be read as a measurement.
+                        <td className="c pending" colSpan={2}>
+                          PENDING
+                        </td>
+                      ) : (
+                        <>
+                          {/* the fractions as written on site, not the decimal */}
+                          <td className="c">
+                            {row.width == null ? "" : formatInches(row.width)}
+                          </td>
+                          <td className="c">
+                            {row.height == null ? "" : formatInches(row.height)}
+                          </td>
+                        </>
+                      )}
                       <td className="c">{row.cont ?? ""}</td>
                       <td className="c tick">{row.omFw ? "✓" : ""}</td>
                       <td className="c tick">{row.endCap ? "✓" : ""}</td>

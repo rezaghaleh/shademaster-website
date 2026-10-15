@@ -1,19 +1,28 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ApiError, money, type LineItemInput, type ProjectInput } from "@/lib/admin-api"
-import { calculateLinePrice } from "@/lib/pricing"
+import { useEffect, useMemo, useState } from "react"
+import { ApiError, CUSTOMER_EXISTS, getPricingRates, money, type LineItemInput, type ProjectInput } from "@/lib/admin-api"
+import { centsToInput, toCents } from "@/lib/invoice-math"
+import { DEFAULT_MARKUP_PERCENT, DEFAULT_RATES, projectPricing } from "@/lib/project-math"
+import { ProjectFinancialSummary } from "@/components/admin/ProjectFinancialSummary"
 import { InchInput } from "@/components/InchInput"
+import { CustomerPicker } from "@/components/admin/CustomerPicker"
 
 /**
  * Create/edit form for a project.
  *
- * <p>The running total is computed locally with the same
- * {@link calculateLinePrice} the public estimate page uses, so the figure shown
- * while typing is the figure the backend will store. The backend recomputes it
- * from its own mirror of the formula on save; the two are held together by the
- * golden vectors, so they cannot silently disagree.
+ * Every window is priced live by the same chain the backend uses (see project-math):
+ * the measurements give the cost, a supplier cost can replace it, the markup goes on top,
+ * and a price typed by hand wins over all of it. Every figure on the form comes from one
+ * snapshot, so changing any input — the project markup included — moves every price,
+ * line total, the subtotal and the profit together. The backend recomputes it all on save.
  */
+
+/** A markup as typed: 50, 50.125 — never 50.000. */
+function formatPercent(value: number | string | null | undefined): string {
+  const n = Number(value)
+  return Number.isFinite(n) ? String(Number(n.toFixed(3))) : "0"
+}
 
 const inputClass =
   "border-line-strong bg-ink text-bone placeholder:text-faint focus-visible:border-sky-brand h-11 w-full rounded-lg border px-3 text-sm outline-none transition-colors"
@@ -22,6 +31,8 @@ export type ProjectFormValues = ProjectInput
 
 const EMPTY: ProjectFormValues = {
   projectName: "",
+  defaultMarkupPercent: DEFAULT_MARKUP_PERCENT,
+  customerId: null,
   customerName: "",
   addressLine1: "",
   addressLine2: "",
@@ -43,47 +54,30 @@ export function ProjectForm({
   submitLabel: string
   onSubmit: (values: ProjectFormValues) => Promise<void>
 }) {
-  const [values, setValues] = useState<ProjectFormValues>(initial ?? EMPTY)
+  const [values, setValues] = useState<ProjectFormValues>({ ...EMPTY, ...initial })
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const [rates, setRates] = useState(DEFAULT_RATES)
+
+  useEffect(() => {
+    let active = true
+    getPricingRates().then((r) => { if (active) setRates(r) })
+      .catch(() => { if (active) setError("Could not load current pricing rates. Reload to try again.") })
+    return () => { active = false }
+  }, [])
 
   const set = <K extends keyof ProjectFormValues>(key: K, value: ProjectFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }))
 
-  /** What the formula says for one shade on this line, ignoring any override. */
-  function calculatedUnit(item: LineItemInput): number {
-    return calculateLinePrice({
-      width: item.width,
-      height: item.height,
-      quantity: 1,
-      productType: item.productType === "ROLLER" ? "roller" : "zebra",
-      motorized: item.motorized,
-    })
-  }
+  const markup = values.defaultMarkupPercent ?? DEFAULT_MARKUP_PERCENT
+  // Markup is an explicit dependency even when the line-item inputs have not changed.
+  // Render prices and totals from the same snapshot; never save automatic prices as overrides.
+  const pricing = useMemo(() => projectPricing(values.items, markup, rates), [values.items, markup, rates])
+  const financials = pricing.financials
+  const subtotal = pricing.subtotalCents / 100
 
-  /** The price actually charged per shade: the manual one where set. */
-  function effectiveUnit(item: LineItemInput): number {
-    return item.unitPriceOverride == null || Number.isNaN(item.unitPriceOverride)
-      ? calculatedUnit(item)
-      : item.unitPriceOverride
-  }
-
-  function lineTotal(item: LineItemInput): number {
-    return effectiveUnit(item) * item.quantity
-  }
-
-  // Recomputes on every keystroke, so the subtotal always reflects the prices
-  // as edited — including manual overrides.
-  const subtotal = useMemo(
-    () => values.items.reduce((sum, item) => sum + lineTotal(item), 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [values.items]
-  )
-
-  const overriddenCount = values.items.filter(
-    (i) => i.unitPriceOverride != null && !Number.isNaN(i.unitPriceOverride)
-  ).length
+  const overriddenCount = pricing.lines.filter((line) => line.overridden).length
 
   function addItem() {
     const next: LineItemInput = {
@@ -97,21 +91,15 @@ export function ProjectForm({
       motorBrand: "",
       unitPriceOverride: null,
     }
-    set("items", [...values.items, next])
+    setValues((v) => ({ ...v, items: [...v.items, next] }))
   }
 
   function updateItem(index: number, patch: Partial<LineItemInput>) {
-    set(
-      "items",
-      values.items.map((item, i) => (i === index ? { ...item, ...patch } : item))
-    )
+    setValues((v) => ({ ...v, items: v.items.map((item, i) => i === index ? { ...item, ...patch } : item) }))
   }
 
   function removeItem(index: number) {
-    set(
-      "items",
-      values.items.filter((_, i) => i !== index)
-    )
+    setValues((v) => ({ ...v, items: v.items.filter((_, i) => i !== index) }))
   }
 
   async function submit(event: React.FormEvent) {
@@ -119,9 +107,14 @@ export function ProjectForm({
     setBusy(true)
     setError(null)
     setFieldErrors({})
-    try {
-      await onSubmit({
+    const send = (createNewCustomer: boolean) => onSubmit({
         ...values,
+        // an existing customer is referred to by id; its details are not resent
+        customerId: values.customerId || null,
+        customerName: values.customerId ? null : values.customerName?.trim() || null,
+        phone: values.customerId ? null : values.phone?.trim() || null,
+        email: values.customerId ? null : values.email?.trim() || null,
+        createNewCustomer,
         items: values.items.map((i) => ({
           ...i,
           label: i.label?.trim() ? i.label.trim() : null,
@@ -136,6 +129,21 @@ export function ProjectForm({
               : i.unitPriceOverride,
         })),
       })
+    try {
+      try {
+        await send(false)
+      } catch (err) {
+        // A customer with this name exists: offer them, or confirm it is someone else.
+        if (err instanceof ApiError && err.code === CUSTOMER_EXISTS) {
+          if (!window.confirm(`${err.message}\n\nOK creates a new customer with the same name. Cancel goes back so you can choose the existing one.`)) {
+            setBusy(false)
+            return
+          }
+          await send(true)
+        } else {
+          throw err
+        }
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -168,29 +176,21 @@ export function ProjectForm({
             onChange={(v) => set("projectName", v)}
             error={fieldError("projectName")}
           />
-          <Field
-            id="customerName"
-            label="Customer name"
-            required
-            value={values.customerName}
-            onChange={(v) => set("customerName", v)}
-            error={fieldError("customerName")}
-          />
-          <Field
-            id="phone"
-            label="Phone"
-            value={values.phone ?? ""}
-            onChange={(v) => set("phone", v)}
-            error={fieldError("phone")}
-          />
-          <Field
-            id="email"
-            label="Email"
-            type="email"
-            value={values.email ?? ""}
-            onChange={(v) => set("email", v)}
-            error={fieldError("email")}
-          />
+          <div className="md:col-span-2">
+            <CustomerPicker
+              value={{
+                customerId: values.customerId ?? null,
+                name: values.customerName ?? "",
+                phone: values.phone ?? "",
+                email: values.email ?? "",
+              }}
+              onChange={(c) =>
+                setValues((v) => ({ ...v, customerId: c.customerId, customerName: c.name, phone: c.phone, email: c.email }))
+              }
+              error={fieldError("customerName") ?? fieldError("email")}
+            />
+          </div>
+          <p className="hud text-faint md:col-span-2">Site address</p>
           <Field
             id="addressLine1"
             label="Address"
@@ -252,6 +252,17 @@ export function ProjectForm({
           </button>
         </div>
 
+        <div className="mt-5 max-w-sm space-y-2">
+          <label className="hud text-faint block" htmlFor="defaultMarkupPercent">Project markup %</label>
+          <input id="defaultMarkupPercent" type="number" min="0" max="99999.999" step="0.001" required
+            className={inputClass} value={Number.isFinite(markup) ? markup : ""}
+            onChange={(e) => set("defaultMarkupPercent", e.target.value === "" ? NaN : Number(e.target.value))} />
+          <p className="text-xs text-faint">
+            Added to every window&rsquo;s cost, unless the window has its own markup. Internal — never on the invoice.
+          </p>
+          {fieldError("defaultMarkupPercent") && <p role="alert" className="text-xs text-danger">{fieldError("defaultMarkupPercent")}</p>}
+        </div>
+
         {values.items.length === 0 ? (
           <p className="text-faint mt-6 text-sm">
             No windows yet. Add at least one before invoicing.
@@ -259,10 +270,9 @@ export function ProjectForm({
         ) : (
           <ul className="mt-6 space-y-4">
             {values.items.map((item, index) => {
-              const calculated = calculatedUnit(item)
-              const effective = effectiveUnit(item)
-              const overridden =
-                item.unitPriceOverride != null && !Number.isNaN(item.unitPriceOverride)
+              const line = pricing.lines[index]
+              const overridden = line.overridden
+              const supplied = line.supplierCost !== null
 
               return (
                 <li
@@ -375,55 +385,69 @@ export function ProjectForm({
                     />
                   </div>
 
-                  {/* pricing, with the manual override */}
-                  <div className="border-line mt-6 grid gap-x-6 gap-y-5 border-t pt-5 sm:grid-cols-2 lg:grid-cols-[minmax(10rem,1fr)_minmax(15rem,1.2fr)_minmax(8rem,auto)] lg:items-start">
+                  {/* What the window costs you: the measurements give it, a supplier
+                      cost can replace it, and the markup goes on top. Internal only. */}
+                  <div className="border-line mt-6 grid gap-x-6 gap-y-5 border-t pt-5 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-2">
-                      <span className="hud text-faint block">Calculated / shade</span>
+                      <span className="hud text-faint block">Calculated cost / shade</span>
                       <p
                         className={`flex h-11 items-center text-sm tabular-nums ${
-                          overridden ? "text-faint line-through" : "text-mute"
+                          supplied ? "text-faint line-through" : "text-bone"
                         }`}
                       >
-                        {money(calculated)}
+                        {money(line.measurementCost / 100)}
+                      </p>
+                      <p className="text-xs text-faint">
+                        {supplied ? "Replaced by the supplier cost" : "From the measurements"}
                       </p>
                     </div>
-
                     <div className="space-y-2">
-                      <label
-                        className="hud text-sky-brand block"
-                        htmlFor={`item-${index}-price`}
-                      >
+                      <label className="hud text-faint block" htmlFor={`item-${index}-cost`}>
+                        Supplier cost / shade · internal
+                      </label>
+                      <input id={`item-${index}-cost`} className={inputClass} type="number" min="0" max="9999999999.99" step="0.01"
+                        placeholder={`Blank uses ${money(line.measurementCost / 100)}`} value={item.costPerUnit ?? ""}
+                        onChange={(e) => updateItem(index, { costPerUnit: e.target.value === "" ? null : Number(e.target.value) })} />
+                      <p className="text-xs text-faint">Optional. The whole shade, motor included.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="hud text-faint block" htmlFor={`item-${index}-markup`}>Markup %</label>
+                      <div className="flex items-center gap-2">
+                        <input id={`item-${index}-markup`} className={`${inputClass} min-w-0`} type="number" min="0" max="99999.999" step="0.001"
+                          placeholder={`Project ${formatPercent(markup)}%`} value={item.markupOverridePercent ?? ""}
+                          onChange={(e) => updateItem(index, { markupOverridePercent: e.target.value === "" ? null : Number(e.target.value) })} />
+                        {!line.inheritsMarkup && (
+                          <button type="button" onClick={() => updateItem(index, { markupOverridePercent: null })}
+                            className="hud border-line-strong text-faint hover:text-bone h-11 shrink-0 rounded-lg border px-3 transition-colors">
+                            Use project markup
+                          </button>
+                        )}
+                      </div>
+                      <p className={`text-xs ${line.inheritsMarkup ? "text-faint" : "text-sky-brand"}`}>
+                        {line.inheritsMarkup
+                          ? "Follows the project markup"
+                          : `Custom ${formatPercent(line.markup)}% for this window`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* What the customer pays. An automatic price is never saved as a manual one. */}
+                  <div className="border-line mt-6 grid gap-x-6 gap-y-5 border-t pt-5 sm:grid-cols-[minmax(15rem,1fr)_minmax(8rem,auto)] sm:items-start">
+                    <div className="space-y-2">
+                      <label className="hud text-sky-brand block" htmlFor={`item-${index}-price`}>
                         Price / shade
                       </label>
-                      <div className="flex items-center gap-2">
-                        <input
+                      <div className="flex max-w-sm items-center gap-2">
+                        <PriceInput
                           id={`item-${index}-price`}
-                          className={inputClass}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder={calculated.toFixed(2)}
-                          value={
-                            item.unitPriceOverride == null ||
-                            Number.isNaN(item.unitPriceOverride)
-                              ? ""
-                              : String(item.unitPriceOverride)
-                          }
-                          onChange={(e) =>
-                            updateItem(index, {
-                              // Clearing the box removes the override and the
-                              // line goes back to the calculated price.
-                              unitPriceOverride:
-                                e.target.value.trim() === ""
-                                  ? null
-                                  : Number(e.target.value),
-                            })
-                          }
+                          automaticCents={line.automatic}
+                          manual={item.unitPriceOverride}
+                          onChange={(value) => updateItem(index, { unitPriceOverride: value })}
                         />
                         {overridden && (
                           <button
                             type="button"
-                            title="Reset to the calculated price"
+                            title="Back to cost plus markup"
                             onClick={() => updateItem(index, { unitPriceOverride: null })}
                             className="hud border-line-strong text-faint hover:text-bone h-11 shrink-0 rounded-lg border px-2.5 transition-colors"
                           >
@@ -431,15 +455,28 @@ export function ProjectForm({
                           </button>
                         )}
                       </div>
-                    </div>
-
-                    <div className="space-y-2 lg:text-right">
-                      <span className="hud text-faint block">Line total</span>
-                      <p className="text-bone flex h-11 items-center text-sm font-semibold tabular-nums lg:justify-end">
-                        {money(lineTotal(item))}
+                      <p className={`text-xs tabular-nums ${overridden ? "text-sky-brand" : "text-faint"}`}>
+                        {overridden
+                          ? `Manual override · cost plus markup would be ${money(line.automatic / 100)}`
+                          : `Automatic · ${money(line.baseCost / 100)} cost + ${formatPercent(line.markup)}% markup`}
                       </p>
                     </div>
+
+                    <div className="space-y-2 sm:text-right">
+                      <span className="hud text-faint block">Line total</span>
+                      <output aria-label={`Window ${index + 1} total`} className="text-bone flex h-11 items-center text-sm font-semibold tabular-nums sm:justify-end">
+                        {money(line.revenue / 100)}
+                      </output>
+                    </div>
                   </div>
+                  <p className="mt-4 text-xs text-faint tabular-nums">
+                    Internal · Total cost {money(line.totalCost / 100)} · Line profit{" "}
+                    <span className={line.profit < 0 ? "text-danger" : "text-sky-brand"}>{money(line.profit / 100)}</span>
+                    {" "}· Margin {line.margin.toFixed(2)}%
+                  </p>
+                  {["width", "height", "quantity", "costPerUnit", "markupOverridePercent", "unitPriceOverride"].map((field) =>
+                    fieldError(`items[${index}].${field}`) ? <p key={field} role="alert" className="mt-2 text-xs text-danger">Window {index + 1}: {fieldError(`items[${index}].${field}`)}</p> : null
+                  )}
                 </li>
               )
             })}
@@ -455,17 +492,20 @@ export function ProjectForm({
               </p>
             )}
           </div>
-          <span className="display text-bone text-[clamp(22px,2.6vw,32px)] tabular-nums">
+          <output aria-label="Project subtotal" className="display text-bone text-[clamp(22px,2.6vw,32px)] tabular-nums">
             {money(subtotal)}
-          </span>
+          </output>
         </div>
 
         <p className="text-faint mt-4 text-xs leading-[1.6]">
-          Blind and motor brands, and the measurements, are kept for your records
-          and are <strong>not</strong> printed on the customer invoice. A manual
-          price applies to this quote only — it never changes the underlying rates.
+          Costs, markups and profit, the blind and motor brands, and the measurements are
+          kept for your records and are <strong>not</strong> printed on the customer invoice,
+          which shows only each window&rsquo;s price. A manual price applies to this quote
+          only — it never changes the underlying rates.
         </p>
       </section>
+
+      <ProjectFinancialSummary financials={financials} markup={markup} />
 
       {error && (
         <p role="alert" className="text-sm text-danger">
@@ -524,6 +564,51 @@ function Field({
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * The price per shade. Shows the automatic price until one is typed: typing makes it a
+ * manual price, and an emptied box returns the window to the automatic price.
+ *
+ * While the box has focus it keeps exactly what is being typed — "4", "40.", or nothing —
+ * so a half-typed price never snaps back to the automatic one between keystrokes.
+ */
+function PriceInput({
+  id,
+  automaticCents,
+  manual,
+  onChange,
+}: {
+  id: string
+  automaticCents: number
+  manual: number | null | undefined
+  onChange: (value: number | null) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const manualCents = toCents(manual)
+  const shown = draft ?? centsToInput(manualCents ?? automaticCents)
+
+  return (
+    <input
+      id={id}
+      className={`${inputClass} tabular-nums`}
+      inputMode="decimal"
+      autoComplete="off"
+      value={shown}
+      onFocus={() => setDraft(shown)}
+      onChange={(e) => {
+        const text = e.target.value
+        setDraft(text)
+        if (text.trim() === "") {
+          onChange(null)
+          return
+        }
+        const cents = toCents(text)
+        if (cents !== null && cents >= 0) onChange(cents / 100)
+      }}
+      onBlur={() => setDraft(null)}
+    />
   )
 }
 
